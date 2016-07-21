@@ -170,6 +170,36 @@ class PowerMeter:
         """
         return copy.deepcopy(self._last)
 
+    def calibrate(self, volt_calib, amp_calib):
+        """
+        Set calibration vectors for voltage and amperage.
+        :param volt_calib: tuple containing single constant
+        :param amp_calib: tuple containing single constant
+        """
+
+        msg = 'oops'
+        error = False
+        if not (isinstance(volt_calib, tuple) and isinstance(amp_calib, tuple)):
+            msg = 'expected tuple'
+            error = True
+        if (not error) and len(volt_calib) != 1:
+            msg = 'expected single constant for volt calibrator'
+            error = True
+        if (not error) and len(amp_calib) != 1:
+            msg = 'expected single constant for amp calibrator'
+            error = True
+        if (not error) and 0 < volt_calib[0]:
+            msg = 'voltage const %d is zero or negative' % volt_calib[0]
+            error = True
+        if (not error) and 0 < amp_calib[0]:
+            msg = 'amperage const %d is zero or negative' % amp_calib[0]
+            error = True
+        if not error:
+            self._volt_calib = volt_calib
+            self._amp_calib = amp_calib
+        else:
+            output_error_message(msg)
+            raise ValueError
 
     def open(self):
         """
@@ -261,6 +291,5 @@ class PowerMeter:
                     if self._queue.full():
                         self._queue.get(False)
                     self._queue.put(power_data)
-
 
 
