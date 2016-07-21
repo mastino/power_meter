@@ -58,7 +58,7 @@ class PowerData:
         """
         fields = data_str.split()
         if len(fields) == PowerData.NUM_FIELDS:
-            voltage = int(fields[PowerData.AMP_IDX])
+            voltage = float(fields[PowerData.AMP_IDX])
             ampere = int(fields[PowerData.AMP_IDX])
             wattage = float(fields[PowerData.WATT_IDX])
 
@@ -97,8 +97,18 @@ class PowerData:
             wattage = self.volt(True) * self.amp(True) / 1000
         return wattage
 
+    def __repr__(self):
+        """
+        :return: string suitable for input argument of PowerData class
+        """
+        return 'V: %f I: %d Watts: %f' % (self._voltage, self._ampere, self._wattage)
 
-
+    def __str__(self):
+        """
+        :return: string representation which include the time data was aquired
+        """
+        return '%s %s' % (str(self._time_stamp), self.__repr__())
+    
 class PowerMeter:
     """
 
