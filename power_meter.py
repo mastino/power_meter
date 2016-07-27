@@ -115,6 +115,13 @@ class PowerData:
         """
         return '%s %s' % (str(self._time_stamp), self.__repr__())
 
+    @staticmethod
+    def csv_header():
+        return "datetime,period,volt,amp,watt"
+
+    def csv(self, calib=True):
+        return "\"%s\",%s,%s,%s,%s" % (self._time_stamp, self._period,self.volt(), self.amp(), self.watt())
+
 class PowerMeter:
     """
 
@@ -125,7 +132,7 @@ class PowerMeter:
         :param baud:     (int) baud rate for ttl communications
         :param timeout: (float) serial read timeout in seconds
         """
-        self._debug = True
+        self._debug = False
         self._port = port
         self._baud = baud
         self._timeout = timeout        # serial read timeout in seconds (float)
