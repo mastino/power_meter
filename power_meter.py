@@ -24,8 +24,8 @@ class PowerData:
     VOLT_IDX = 1
     AMP_IDX = 3
     WATT_IDX = 6
-    DEFAULT_VOLT_CALIB = (1.0)
-    DEFAULT_AMP_CALIB = (1.0)
+    DEFAULT_VOLT_CALIB = 1.0
+    DEFAULT_AMP_CALIB = 1.0
 
     def __init__(self, data_str, time_stamp, period, volt_calib = DEFAULT_VOLT_CALIB,
                  amp_calib = DEFAULT_AMP_CALIB):
@@ -44,13 +44,17 @@ class PowerData:
             msg = 'value error converting power data %s' % str(err)
             output_error_message(msg)
             raise err
+        except TypeError as err:
+            msg = 'type error converting power data %s' % str(err)
+            output_error_message(msg)
+            raise err
 
     @property
     def timestamp(self):
         return self._time_stamp
 
     @staticmethod
-    def parse(self, data_str):
+    def parse(data_str):
         """
 
         :param data_str: expects a string in the format of 'v: n.n I: nnn mA Watts: n.n'
@@ -58,9 +62,11 @@ class PowerData:
         """
         fields = data_str.split()
         if len(fields) == PowerData.NUM_FIELDS:
-            voltage = float(fields[PowerData.AMP_IDX])
-            ampere = int(fields[PowerData.AMP_IDX])
+            voltage = float(fields[PowerData.VOLT_IDX])
+            ampere = float(fields[PowerData.AMP_IDX]) / 1000
             wattage = float(fields[PowerData.WATT_IDX])
+        else:
+            raise ValueError
 
         return voltage, ampere, wattage
 
@@ -69,9 +75,9 @@ class PowerData:
         :param calib
         :return:
         """
-        voltage = self._last.voltage
+        voltage = self._voltage
         if calib:
-            voltage *= self._volt_calib[0]
+            voltage *= self._volt_calib
         return voltage
 
 
@@ -80,9 +86,9 @@ class PowerData:
         :param calib
         :return:
         """
-        ampere = self._last.ampere
+        ampere = self._ampere
         if calib:
-            ampere *= self._amp_calib[0]
+            ampere *= self._amp_calib
         return ampere
 
 
@@ -92,23 +98,23 @@ class PowerData:
         :param calib:
         :return:
         """
-        wattage = self._last.wattage
+        wattage = self._wattage
         if calib:
-            wattage = self.volt(True) * self.amp(True) / 1000
+            wattage = self.volt(True) * self.amp(True)
         return wattage
 
     def __repr__(self):
         """
         :return: string suitable for input argument of PowerData class
         """
-        return 'V: %f I: %d Watts: %f' % (self._voltage, self._ampere, self._wattage)
+        return 'V: %f I: %f Watts: %f' % (self._voltage, self._ampere, self._wattage)
 
     def __str__(self):
         """
         :return: string representation which include the time data was aquired
         """
         return '%s %s' % (str(self._time_stamp), self.__repr__())
-    
+
 class PowerMeter:
     """
 
@@ -119,6 +125,7 @@ class PowerMeter:
         :param baud:     (int) baud rate for ttl communications
         :param timeout: (float) serial read timeout in seconds
         """
+        self._debug = True
         self._port = port
         self._baud = baud
         self._timeout = timeout        # serial read timeout in seconds (float)
@@ -127,8 +134,8 @@ class PowerMeter:
         self._monitor = None
         self._serial_timeout_count = 0
 
-        self._volt_calib = (1.0)       # vector of calibration values for voltage
-        self._amp_calib = (1.0)        # vector of calibration values for amperage
+        self._volt_calib = 1.0       # vector of calibration values for voltage
+        self._amp_calib = 1.0        # vector of calibration values for amperage
 
         self._epoch = None             # timestamp (time.datetime) for start of monitoring
         self._last = None              # most recent power values received on ttl
@@ -231,7 +238,11 @@ class PowerMeter:
         if self._ser:
             try:
                 self._epoch = datetime.datetime.now()
+                if self._debug:
+                    print('Starting thread ...',end='',file=stderr)
                 self._monitor = thread.start_new_thread(self._monitor_thread, ())
+                if self._debug:
+                    print(' started',file=stderr)
             except:
                 msg = 'Error starting monitor thread: %s' % exc_info()[0]
                 output_error_message(msg)
@@ -265,7 +276,11 @@ class PowerMeter:
         while True:
             data_str = None
             try:
+                if self._debug:
+                    print('Waiting for data ...',end='',file=stderr)
                 data_str = self._ser.readline()
+                if self._debug:
+                    print('got %s' % data_str, file=stderr)
             except ValueError as err:
                 # shouldn't happen
                 msg = 'ValueError in monitor: %s' % str(err)
@@ -283,20 +298,22 @@ class PowerMeter:
                 timestamp = datetime.datetime.now()
                 if self._last:
                     period = timestamp - self._last.timestamp
-                    self._avg_period = (0.8 * self._avg_period) + (0.2 * period)
+                    self._avg_period = (0.8 * self._avg_period) + (0.2 * period.total_seconds())
                 else:
                     period = timestamp - self._epoch
-                    self._avg_period = period
+                    self._avg_period = period.total_seconds()
 
                 try:
                     power_data = PowerData(data_str, timestamp, period, self._volt_calib, self._amp_calib)
+                    if self._debug:
+                        print(power_data)
                 except:
                     power_data = None
 
                 if power_data:
                     self._last = copy.deepcopy(power_data)
-                    self._watt_seconds = self._last.watt(False) * period.total_seconds()
-                    self._calib_watt_seconds = self._last.watt(True) * period.total_seconds()
+                    self._watt_seconds += self._last.watt(False) * period.total_seconds()
+                    self._calib_watt_seconds += self._last.watt(True) * period.total_seconds()
 
                     if self._queue.full():
                         self._queue.get(False)
