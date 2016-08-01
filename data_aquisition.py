@@ -5,6 +5,7 @@ from __future__ import print_function
 import power_meter as pm
 import datetime
 from Queue import Empty
+from sys import argv
 
 def main(serial_port, output_fh, duration):
 
@@ -24,7 +25,22 @@ def main(serial_port, output_fh, duration):
             print(line, file=output_fh)
 
 if __name__ == '__main__':
-    fh = open('battery_charge.csv', 'w')
-    duration = datetime.timedelta(minutes=10)
 
-    main('/dev/tty.usbserial-A1057F91', fh, duration)
+    if len(argv) >= 2:
+        file_name = argv[1]
+    else:
+        file_name = 'power_measurment.csv'
+    fh = open(file_name, 'w')
+
+    if len(argv) >= 3:
+        port = argv[2]
+    else:
+        port = '/dev/tty.usbserial-A1057F91'
+
+    if len(argv) >= 4:
+        duration = datetime.timedelta(minutes=argv[2])
+    else:
+        duration = datetime.timedelta(minutes=5)
+
+
+    main(port, fh, duration)
