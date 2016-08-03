@@ -120,7 +120,7 @@ class PowerData:
         return "datetime,period,volt,amp,watt"
 
     def csv(self, calib=True):
-        return "\"%s\",%s,%s,%s,%s" % (self._time_stamp, self._period,self.volt(), self.amp(), self.watt())
+        return "\"%s\",%s,%s,%s,%s" % (self._time_stamp, self._period.total_seconds() ,self.volt(), self.amp(), self.watt())
 
 class PowerMeter:
     """
