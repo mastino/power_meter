@@ -252,13 +252,13 @@ class INA219:
     
       # 3. Calculate possible range of LSBs (Min = 15-bit, Max = 12-bit)
       # MinimumLSB = MaxExpected_I/32767
-      # MinimumLSB = 0.0000305             (30.5�A per bit)
+      # MinimumLSB = 0.0000305             (30.5A per bit)
       # MaximumLSB = MaxExpected_I/4096
-      # MaximumLSB = 0.000244              (244�A per bit)
+      # MaximumLSB = 0.000244              (244A per bit)
     
       # 4. Choose an LSB between the min and max values
       #    (Preferrably a roundish number close to MinLSB)
-      # CurrentLSB = 0.0000400 (40�A per bit)
+      # CurrentLSB = 0.0000400 (40A per bit)
     
       # 5. Compute the calibration register
       # Cal = trunc (0.04096 / (Current_LSB * RSHUNT))
@@ -268,7 +268,7 @@ class INA219:
       
       # 6. Calculate the power LSB
       # PowerLSB = 20 * CurrentLSB
-      # PowerLSB = 0.0008 (800�W per bit)
+      # PowerLSB = 0.0008 (800W per bit)
     
       # 7. Compute the maximum current and shunt voltage values before overflow
       #
@@ -299,7 +299,7 @@ class INA219:
     
       # Set multipliers to convert raw current/power values
       self.ina219_currentDivider_mA = 25      # Current LSB = 40uA per bit (1000/40 = 25)
-      self.ina219_powerDivider_mW = 1         # Power LSB = 800�W per bit
+      self.ina219_powerDivider_mW = 1         # Power LSB = 800W per bit
     
       # Set Calibration register to 'Cal' calculated above	
       self._wireWriteRegister(INA219_REG_CALIBRATION, self.ina219_calValue)
