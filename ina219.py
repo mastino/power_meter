@@ -114,7 +114,7 @@ INA219_REG_CALIBRATION                 = 0x05
 # default device for I2C bus
 INA219_I2C_DEVICE_NUM = 1  # corresponds to /dev/i2c-1
 
-class Adafruit_INA219:
+class INA219:
 
   def __init__(self, addr = INA219_ADDRESS, n = INA219_I2C_DEVICE_NUM):
       """
