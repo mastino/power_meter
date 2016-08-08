@@ -445,7 +445,7 @@ class INA219:
       :param reg:
       :return: int
       """
-      value = self.i2c_bus.read_byte(self.ina219_i2c_addr, reg)
+      value = self.i2c_bus.read_byte_data(self.ina219_i2c_addr, reg)
       return value
 
   def _getBusVoltage_raw(self):
