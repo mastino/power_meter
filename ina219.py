@@ -1,12 +1,14 @@
 """
 Rickie Kerndt <rkerndt@cs.uoregon.edu>
 Python port of Adafruit_INA219 C++ code for accessing INA219 power measurements
+derived from Adafruit_INA219.{h,cpp}
 
 Required python modules:
-    smbus-cffi (tested with version 0.5.1)
+    python-smbus (from lm-sensors.org) part of debian python-smbus package. This is
+    included with the raspi-jessi distro so should not need to install.
 
 /**************************************************************************/
-/*! 
+/*!
     @file     Adafruit_INA219.h
     @author   K. Townsend (Adafruit Industries)
     @license  BSD (see license.txt)
@@ -156,7 +158,7 @@ class INA219:
   def begin(self):
       """
       Configures ina219. First reads config and calibration registers so that they are
-      restore afterwards.
+      restored afterwards.
       """
       self.orig_config = self._wireReadRegister(INA219_REG_CONFIG)
       self.orig_calib = self._wireReadRegister(INA219_REG_CALIBRATION)
@@ -167,7 +169,7 @@ class INA219:
   def close(self):
       """
       Resets ina219 device and restores previous configuration and calibration values.
-      Don't to anything if we do not have the original configuration and calibration values
+      Don't do anything if we do not have the original configuration and calibration values
       """
       if self.orig_config and self.orig_calib:
           self._reset()
@@ -189,6 +191,117 @@ class INA219:
           f = self._calibration_16V_400mA
       self.calibrator = f
 
+
+  def getBusVoltage_V(self):
+      """
+      Gets the bus voltage in volts
+      :return: float
+      """
+      return self._getBusVoltage_raw() * 0.001
+
+  def getShuntVoltage_mV(self):
+      """
+      Gets the shunt voltage in mV (+/- 327mV)
+      :return:
+      """
+      return self._getShuntVoltage_raw() * .01
+
+  def getCurrent_mA(self):
+      """
+      Gets the current value in mA, taking into account the
+      config settings and current LSB
+      :return:
+      """
+      return self._getCurrent_raw() / self.ina219_currentDivider_mA
+
+  # private class methods:
+
+  # The following multipliers are used to convert raw current and power
+  # values to mA and mW, taking into account the current config settings
+
+  @staticmethod
+  def _host_to_i2c(value):
+      """
+      Swaps byte order for 16bit word. Caution: this does not
+      check for +/- overflow nor does it deal with negative
+      values since we shouldn't be writting twos complement to
+      the ina219 device.
+      :param value: int
+      :return: int
+      """
+      return ((value & 0xFF00) >> 8) | ((value & 0xFF) << 8)
+
+  @staticmethod
+  def _i2c_to_host(value):
+      """
+      Converts i2c 16 bit twos complement word to python int
+      :param value: int
+      :return: int
+      """
+      lsb = (value & 0xFF00) >> 8
+      msb = (value & 0xFF) << 8
+
+      # assume python is using 32bit int (true for Python 2)
+      if msb >= 0x8000:
+          msb = msb | 0xFFFF0000
+
+      return msb | lsb
+
+  def _wireWriteRegister(self, reg, value):
+      """
+      Sends a single command byte over I2C
+      :param reg: unsigned 8 bit register value
+      :param value: unsigned 16bit value
+      """
+      value = INA219._host_to_i2c(value)
+      self.i2c_bus.write_word_data(self.ina219_i2c_addr, reg, value)
+
+  def _wireReadRegister(self, reg):
+      """
+      Reads 16 bit values over I2C
+      :param reg:
+      :return: int
+      """
+      value = self.i2c_bus.read_word_data(self.ina219_i2c_addr, reg)
+      return INA219._host_to_i2c(value)
+
+  def _getBusVoltage_raw(self):
+      """
+      Gets the raw bus voltage (16-bit signed integer, so +/- 32767
+      :return:
+      """
+      value = self._wireReadRegister(INA219_REG_BUSVOLTAGE)
+
+      # Shift to the reight 3 to drop CNVR and OVF and multiply by LSB
+      return (value >> 3) * 4
+
+  def _getShuntVoltage_raw(self):
+      """
+      Gets the raw shunt voltage (16-bit signed integer, so +/- 32767
+      :return:
+      """
+      return self._wireReadRegister(INA219_REG_SHUNTVOLTAGE)
+
+  def _getCurrent_raw(self):
+      """
+      Gets the raw current value (16-bit signed integer, so +/- 32767
+      :return:
+      """
+      # Sometimes a sharp load will reset the INA219, which will
+      # reset the cal register, meaning CURRENT and POWER will
+      # not be available ... avoid this by always setting a cal
+      # value even if it's an unfortunate extra step
+      #self._wireWriteRegister(INA219_REG_CALIBRATION, self.ina219_calValue)
+
+      # Now we can safely read the CURRENT register!
+      return self._wireReadRegister(INA219_REG_CURRENT)
+
+  def _reset(self):
+      """
+      Sets the reset bit on INA219 configuration register to reset device
+      """
+      self._wireWriteRegister(INA219_REG_CONFIG, INA219_CONFIG_RESET)
+
   def _calibration_32V_2A(self):
       """
       Configures to INA219 to be able to measure up to 32V and 2A of current
@@ -204,38 +317,38 @@ class INA219:
       # are shown below if you want to change the settings.  You will
       # also need to change any relevant register settings, such as
       # setting the VBUS_MAX to 16V instead of 32V, etc.
-    
+
       # VBUS_MAX = 32V             (Assumes 32V, can also be set to 16V)
       # VSHUNT_MAX = 0.32          (Assumes Gain 8, 320mV, can also be 0.16, 0.08, 0.04)
       # RSHUNT = 0.1               (Resistor value in ohms)
-      
+
       # 1. Determine max possible current
       # MaxPossible_I = VSHUNT_MAX / RSHUNT
       # MaxPossible_I = 3.2A
-      
+
       # 2. Determine max expected current
       # MaxExpected_I = 2.0A
-      
+
       # 3. Calculate possible range of LSBs (Min = 15-bit, Max = 12-bit)
       # MinimumLSB = MaxExpected_I/32767
       # MinimumLSB = 0.000061              (61uA per bit)
       # MaximumLSB = MaxExpected_I/4096
       # MaximumLSB = 0,000488              (488uA per bit)
-      
+
       # 4. Choose an LSB between the min and max values
       #    (Preferrably a roundish number close to MinLSB)
       # CurrentLSB = 0.0001 (100uA per bit)
-      
+
       # 5. Compute the calibration register
       # Cal = trunc (0.04096 / (Current_LSB * RSHUNT))
       # Cal = 4096 (0x1000)
-      
+
       self.ina219_calValue = 4096
-      
+
       # 6. Calculate the power LSB
       # PowerLSB = 20 * CurrentLSB
       # PowerLSB = 0.002 (2mW per bit)
-      
+
       # 7. Compute the maximum current and shunt voltage values before overflow
       #
       # Max_Current = Current_LSB * 32767
@@ -255,19 +368,19 @@ class INA219:
       # Else
       #    Max_ShuntVoltage_Before_Overflow = Max_ShuntVoltage
       # End If
-      
+
       # 8. Compute the Maximum Power
       # MaximumPower = Max_Current_Before_Overflow * VBUS_MAX
       # MaximumPower = 3.2 * 32V
       # MaximumPower = 102.4W
-      
+
       # Set multipliers to convert raw current/power values
       self.ina219_currentDivider_mA = 10  # Current LSB = 100uA per bit (1000/100 = 10)
       self.ina219_powerDivider_mW = 2     # Power LSB = 1mW per bit (2/1)
-    
-      # Set Calibration register to 'Cal' calculated above	
+
+      # Set Calibration register to 'Cal' calculated above
       self._wireWriteRegister(INA219_REG_CALIBRATION, self.ina219_calValue)
-      
+
       # Set Config register to take into account the settings above
       config = (INA219_CONFIG_BVOLTAGERANGE_32V |
                 INA219_CONFIG_GAIN_8_320MV |
@@ -292,38 +405,38 @@ class INA219:
       # are shown below if you want to change the settings.  You will
       # also need to change any relevant register settings, such as
       # setting the VBUS_MAX to 16V instead of 32V, etc.
-    
+
       # VBUS_MAX = 32V		(Assumes 32V, can also be set to 16V)
       # VSHUNT_MAX = 0.32	(Assumes Gain 8, 320mV, can also be 0.16, 0.08, 0.04)
       # RSHUNT = 0.1			(Resistor value in ohms)
-    
+
       # 1. Determine max possible current
       # MaxPossible_I = VSHUNT_MAX / RSHUNT
       # MaxPossible_I = 3.2A
-    
+
       # 2. Determine max expected current
       # MaxExpected_I = 1.0A
-    
+
       # 3. Calculate possible range of LSBs (Min = 15-bit, Max = 12-bit)
       # MinimumLSB = MaxExpected_I/32767
       # MinimumLSB = 0.0000305             (30.5A per bit)
       # MaximumLSB = MaxExpected_I/4096
       # MaximumLSB = 0.000244              (244A per bit)
-    
+
       # 4. Choose an LSB between the min and max values
       #    (Preferrably a roundish number close to MinLSB)
       # CurrentLSB = 0.0000400 (40A per bit)
-    
+
       # 5. Compute the calibration register
       # Cal = trunc (0.04096 / (Current_LSB * RSHUNT))
       # Cal = 10240 (0x2800)
-    
+
       self.ina219_calValue = 10240
-      
+
       # 6. Calculate the power LSB
       # PowerLSB = 20 * CurrentLSB
       # PowerLSB = 0.0008 (800W per bit)
-    
+
       # 7. Compute the maximum current and shunt voltage values before overflow
       #
       # Max_Current = Current_LSB * 32767
@@ -345,19 +458,19 @@ class INA219:
       # Else
       #    Max_ShuntVoltage_Before_Overflow = Max_ShuntVoltage
       # End If
-    
+
       # 8. Compute the Maximum Power
       # MaximumPower = Max_Current_Before_Overflow * VBUS_MAX
       # MaximumPower = 1.31068 * 32V
       # MaximumPower = 41.94176W
-    
+
       # Set multipliers to convert raw current/power values
       self.ina219_currentDivider_mA = 25      # Current LSB = 40uA per bit (1000/40 = 25)
       self.ina219_powerDivider_mW = 1         # Power LSB = 800W per bit
-    
-      # Set Calibration register to 'Cal' calculated above	
+
+      # Set Calibration register to 'Cal' calculated above
       self._wireWriteRegister(INA219_REG_CALIBRATION, self.ina219_calValue)
-    
+
       # Set Config register to take into account the settings above
       config = (INA219_CONFIG_BVOLTAGERANGE_32V |
                         INA219_CONFIG_GAIN_8_320MV |
@@ -450,95 +563,4 @@ class INA219:
                         INA219_CONFIG_SADCRES_12BIT_1S_532US |
                         INA219_CONFIG_MODE_SANDBVOLT_CONTINUOUS)
       self._wireWriteRegister(INA219_REG_CONFIG, config)
-      
 
-  def getBusVoltage_V(self):
-      """
-      Gets the bus voltage in volts
-      :return: float
-      """
-      return self._getBusVoltage_raw() * 0.001
-
-  def getShuntVoltage_mV(self):
-      """
-      Gets the shunt voltage in mV (+/- 327mV)
-      :return:
-      """
-      return self._getShuntVoltage_raw() * .01
-
-  def getCurrent_mA(self):
-      """
-      Gets the current value in mA, taking into account the
-      config settings and current LSB
-      :return:
-      """
-      return self._getCurrent_raw() / self.ina219_currentDivider_mA
-
-  # private class methods:
-
-  # The following multipliers are used to convert raw current and power
-  # values to mA and mW, taking into account the current config settings
-
-  @staticmethod
-  def _swap_bytes(value):
-      """
-      Swaps byte order for 16bit word
-      :param value:
-      :return:
-      """
-      return ((value & 0xFF00) >> 8) | ((value & 0xFF) << 8)
-
-  def _wireWriteRegister(self, reg, value):
-      """
-      Sends a single command byte over I2C
-      :param reg: unsigned 8 bit register value
-      :param value: unsigned 16bit value
-      """
-      value = INA219._swap_bytes(value)
-      self.i2c_bus.write_word_data(self.ina219_i2c_addr, reg, value)
-
-  def _wireReadRegister(self, reg):
-      """
-      Reads 16 bit values over I2C
-      :param reg:
-      :return: int
-      """
-      value = self.i2c_bus.read_word_data(self.ina219_i2c_addr, reg)
-      return INA219._swap_bytes(value)
-
-  def _getBusVoltage_raw(self):
-      """
-      Gets the raw bus voltage (16-bit signed integer, so +/- 32767
-      :return:
-      """
-      value = self._wireReadRegister(INA219_REG_BUSVOLTAGE)
-
-      # Shift to the reight 3 to drop CNVR and OVF and multiply by LSB
-      return (value >> 3) * 4
-
-  def _getShuntVoltage_raw(self):
-      """
-      Gets the raw shunt voltage (16-bit signed integer, so +/- 32767
-      :return:
-      """
-      return self._wireReadRegister(INA219_REG_SHUNTVOLTAGE)
-
-  def _getCurrent_raw(self):
-      """
-      Gets the raw current value (16-bit signed integer, so +/- 32767
-      :return:
-      """
-      # Sometimes a sharp load will reset the INA219, which will
-      # reset the cal register, meaning CURRENT and POWER will
-      # not be available ... avoid this by always setting a cal
-      # value even if it's an unfortunate extra step
-      #self._wireWriteRegister(INA219_REG_CALIBRATION, self.ina219_calValue)
-
-      # Now we can safely read the CURRENT register!
-      return self._wireReadRegister(INA219_REG_CURRENT)
-
-  def _reset(self):
-      """
-      Sets the reset bit on INA219 configuration register to reset device
-      """
-      self._wireWriteRegister(INA219_REG_CONFIG, INA219_CONFIG_RESET)
