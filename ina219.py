@@ -116,6 +116,11 @@ INA219_REG_CALIBRATION                 = 0x05
 # default device for I2C bus
 INA219_I2C_DEVICE_NUM = 1  # corresponds to /dev/i2c-1
 
+# defined calibration methods
+INA219_CALIB_32V_2A    = 0
+INA219_CALIB_32V_1A    = 1
+INA219_CALIB_16V_400mA = 2
+
 class INA219:
 
   def __init__(self, addr = INA219_ADDRESS, n = INA219_I2C_DEVICE_NUM):
@@ -137,6 +142,7 @@ class INA219:
       # keep around previous config and calibrtion register contents
       self.orig_config = None
       self.orig_calib = None
+      self.calibrator = self.setCalibration_32V_2A
 
   def __str__(self):
       """
@@ -147,7 +153,7 @@ class INA219:
       return fmt % (self.ina219_i2c_addr, self.ina219_currentDivider_mA, self.ina219_powerDivider_mW,
                     self.ina219_calValue, self.orig_config, self.orig_calib)
 
-  def begin(self, calibrate=self.setCalibration_32V_2A):
+  def begin(self):
       """
       Configures ina219. First reads config and calibration registers so that they are
       restore afterwards.
@@ -156,7 +162,7 @@ class INA219:
       self.orig_calib(self._wireReadRegister(INA219_REG_CALIBRATION))
       self._reset()
       sleep(0.1)
-      calibrate()
+      self.calibrator()
 
   def close(self):
       """
@@ -169,7 +175,21 @@ class INA219:
           self._wireWriteRegister(INA219_REG_CONFIG, self.orig_config)
           self._wireWriteRegister(INA219_REG_CALIBRATION, self.orig_calib)
 
-  def setCalibration_32V_2A(self):
+  def setCalibration(self, calibrator):
+      """
+      Sets calibration function to use for ina219
+      :param calibrator: one of the following (INA219_CALIB_32V_2A, INA219_CALIB_32V_1A, INA219_CALIB_16V_400MA)
+      """
+      f = self.calibrator
+      if calibrator == INA219_CALIB_32V_2A:
+          f = self._calibration_32V_2A
+      elif calibrator == INA219_CALIB_32V_1A:
+          f = self._calibration_32V_1A
+      elif calibrator == INA219_CALIB_16V_400mA:
+          f = self._calibration_16V_400mA
+      self.calibrator = f
+
+  def _calibration_32V_2A(self):
       """
       Configures to INA219 to be able to measure up to 32V and 2A of current
       Each unit of current corresponds to 100uA, and each unit of power corresponds
@@ -257,7 +277,7 @@ class INA219:
       self._wireWriteRegister(INA219_REG_CONFIG, config)
 
 
-  def setCalibration_32V_1A(self):
+  def _calibration_32V_1A(self):
       """
       Configures INA219 to be able to measure up to 32V and 1A
       of current. Each unit of current corresponds to 40uA, and each
@@ -348,7 +368,7 @@ class INA219:
 
 
 
-  def setCalibration_16V_400mA(self):
+  def _calibration_16V_400mA(self):
       """
       Calibration which uses the highest precision for
       current measuremtn (0.1mA), at the expense of only supporting 16V
