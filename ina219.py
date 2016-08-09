@@ -478,8 +478,13 @@ class INA219:
       # reset the cal register, meaning CURRENT and POWER will
       # not be available ... avoid this by always setting a cal
       # value even if it's an unfortunate extra step
-      self._wireWriteRegister(INA219_REG_CALIBRATION, self.ina219_calValue)
+      #self._wireWriteRegister(INA219_REG_CALIBRATION, self.ina219_calValue)
 
       # Now we can safely read the CURRENT register!
       return self._wireReadRegister(INA219_REG_CURRENT)
 
+  def _reset(self):
+      """
+      Sets the reset bit on INA219 configuration register to reset device
+      """
+      self._wireWriteRegister(INA219_REG_CONFIG, INA219_CONFIG_RESET)
