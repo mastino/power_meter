@@ -26,6 +26,8 @@ Required python modules:
 """
 
 import smbus
+from time import sleep
+from binascii import hexlify
 
 # /*=========================================================================
 #    I2C ADDRESS/BITS
@@ -127,13 +129,45 @@ class INA219:
                       /dev/i2c-1
       """
       self.ina219_i2c_addr = addr
+      self.ina219_calValue = 0
       self.ina219_currentDivider_mA = 0
       self.ina219_powerDivider_mW = 0
       self.i2c_bus = smbus.SMBus(n)
 
-      # default calibration is set to 32V and 2A, use appropriate setCalibration_nnV_nA
-      # to use something different.
-      self.setCalibration_32V_2A()
+      # keep around previous config and calibrtion register contents
+      self.orig_config = None
+      self.orig_calib = None
+
+  def __str__(self):
+      """
+      Generate a string with the current configuration.
+      :return:  string
+      """
+      fmt = 'i2c_addr=0x%x, currentDivider_mA=%d, powerDivider_mW=%d, calValue=0x%x, orig_conf=0x%x, orig_calib=0x%x'
+      return fmt % (self.ina219_i2c_addr, self.ina219_currentDivider_mA, self.ina219_powerDivider_mW,
+                    self.ina219_calValue, self.orig_config, self.orig_calib)
+
+  def begin(self, calibrate=self.setCalibration_32V_2A):
+      """
+      Configures ina219. First reads config and calibration registers so that they are
+      restore afterwards.
+      """
+      self.orig_config(self._wireReadRegister(INA219_REG_CONFIG))
+      self.orig_calib(self._wireReadRegister(INA219_REG_CALIBRATION))
+      self._reset()
+      sleep(0.1)
+      calibrate()
+
+  def close(self):
+      """
+      Resets ina219 device and restores previous configuration and calibration values.
+      Don't to anything if we do not have the original configuration and calibration values
+      """
+      if self.orig_config and self.orig_calib:
+          self._reset()
+          sleep(0.1)
+          self._wireWriteRegister(INA219_REG_CONFIG, self.orig_config)
+          self._wireWriteRegister(INA219_REG_CALIBRATION, self.orig_calib)
 
   def setCalibration_32V_2A(self):
       """
