@@ -158,8 +158,8 @@ class INA219:
       Configures ina219. First reads config and calibration registers so that they are
       restore afterwards.
       """
-      self.orig_config(self._wireReadRegister(INA219_REG_CONFIG))
-      self.orig_calib(self._wireReadRegister(INA219_REG_CALIBRATION))
+      self.orig_config = self._wireReadRegister(INA219_REG_CONFIG)
+      self.orig_calib = self._wireReadRegister(INA219_REG_CALIBRATION)
       self._reset()
       sleep(0.1)
       self.calibrator()
