@@ -241,9 +241,13 @@ class INA219:
       lsb = (value & 0xFF00) >> 8
       msb = (value & 0xFF) << 8
 
+      # TODO Remove debug code
+      print('lsb=0x%x' % lsb)
+      print('msb=0x%x' % msb)
       # assume python is using 32bit int (true for Python 2)
       if msb >= 0x8000:
           msb = msb | 0xFFFF0000
+          print('msb=0x%x' % msb)
 
       return msb | lsb
 
