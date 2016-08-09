@@ -425,12 +425,22 @@ class INA219:
   # The following multipliers are used to convert raw current and power
   # values to mA and mW, taking into account the current config settings
 
+  @staticmethod
+  def _swap_bytes(value):
+      """
+      Swaps byte order for 16bit word
+      :param value:
+      :return:
+      """
+      return ((value & 0xFF00) >> 8) | ((value & 0xFF) << 8)
+
   def _wireWriteRegister(self, reg, value):
       """
       Sends a single command byte over I2C
       :param reg: unsigned 8 bit register value
       :param value: unsigned 16bit value
       """
+      value = INA219._swap_bytes(value)
       self.i2c_bus.write_word_data(self.ina219_i2c_addr, reg, value)
 
   def _wireReadRegister(self, reg):
@@ -439,7 +449,8 @@ class INA219:
       :param reg:
       :return: int
       """
-      return self.i2c_bus.read_word_data(self.ina219_i2c_addr, reg)
+      value = self.i2c_bus.read_word_data(self.ina219_i2c_addr, reg)
+      return INA219._swap_bytes(value)
 
   def _getBusVoltage_raw(self):
       """
