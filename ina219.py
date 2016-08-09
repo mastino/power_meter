@@ -257,7 +257,7 @@ class INA219:
       :param reg: unsigned 8 bit register value
       :param value: unsigned 16bit value
       """
-      value = INA219._host_to_i2c(value)
+      #value = INA219._host_to_i2c(value)
       self.i2c_bus.write_word_data(self.ina219_i2c_addr, reg, value)
 
   def _wireReadRegister(self, reg):
@@ -267,8 +267,9 @@ class INA219:
       :return: int
       """
       value = self.i2c_bus.read_word_data(self.ina219_i2c_addr, reg)
-      return INA219._i2c_to_host(value)
-
+      #return INA219._i2c_to_host(value)
+      return value
+  
   def _getBusVoltage_raw(self):
       """
       Gets the raw bus voltage (16-bit signed integer, so +/- 32767
