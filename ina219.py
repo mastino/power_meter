@@ -267,7 +267,7 @@ class INA219:
       :return: int
       """
       value = self.i2c_bus.read_word_data(self.ina219_i2c_addr, reg)
-      return INA219._host_to_i2c(value)
+      return INA219._i2c_to_host(value)
 
   def _getBusVoltage_raw(self):
       """
