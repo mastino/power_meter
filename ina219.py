@@ -142,7 +142,7 @@ class INA219:
       # keep around previous config and calibrtion register contents
       self.orig_config = None
       self.orig_calib = None
-      self.calibrator = self.setCalibration_32V_2A
+      self.calibrator = self._calibration_32V_2A
 
   def __str__(self):
       """
