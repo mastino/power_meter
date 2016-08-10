@@ -191,7 +191,7 @@ class INA219:
   def getShuntVoltage_mV(self):
       """
       Gets the shunt voltage in mV (+/- 327mV)
-      :return:
+      :return: float
       """
       return self._getShuntVoltage_raw() * .01
 
@@ -199,10 +199,20 @@ class INA219:
       """
       Gets the current value in mA, taking into account the
       config settings and current LSB
-      :return:
+      :return: float
       """
       return float(self._getCurrent_raw()) / self.ina219_currentDivider_mA
 
+  def getPower_mW(self):
+      """
+      Gets the current power in mW, taking into account the config settings.
+      This provides the power draw computed on the ina219 device and due to
+      read timings will be a more accurate representation than computing
+      power from getCurrent and getBusVoltage.
+      :return: float
+      """
+      return float(self._getPower_raw()) / self.ina219_powerDivider_mW
+  
   # private class methods:
 
   @staticmethod
@@ -288,6 +298,21 @@ class INA219:
 
       # Now we can safely read the CURRENT register!
       return self._wireReadRegister(INA219_REG_CURRENT)
+
+  def _getPower_raw(self):
+      """
+      Gets the raw power value (16-bit signed integer, so +/- 32767. Power
+      is computed on ina219 from voltage and current registers. These
+      intermediate values are not computed simultaneous and are separated
+      by delays determined from the configuration dependent on bit resolution
+      and sampling. However, the timing provided by computing this on the ina219
+      device is going to give a more accurate representation of power draw
+      then computing from bus voltage and current reads. Hence, due to timing
+      of reads do not expect power calculations with getBusVoltage and getCurrent
+      to exactly match getPower
+      :return: float
+      """
+      return self._wireReadRegister(INA219_REG_POWER)
 
   def _reset(self):
       """
