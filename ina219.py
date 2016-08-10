@@ -1,7 +1,7 @@
 """
 Rickie Kerndt <rkerndt@cs.uoregon.edu>
 Python port of Adafruit_INA219 C++ code for accessing INA219 power measurements
-derived from Adafruit_INA219.{h,cpp}
+derived from Adafruit_INA219.{h,cpp}. See ina219_license.txt.
 
 Required python modules:
     python-smbus (from lm-sensors.org) part of debian python-smbus package. This is
@@ -29,7 +29,7 @@ Required python modules:
 
 import smbus
 from time import sleep
-from ctypes import c_short
+
 
 # /*=========================================================================
 #    I2C ADDRESS/BITS
@@ -212,7 +212,7 @@ class INA219:
       config settings and current LSB
       :return:
       """
-      return self._getCurrent_raw() / self.ina219_currentDivider_mA
+      return float(self._getCurrent_raw()) / self.ina219_currentDivider_mA
 
   # private class methods:
 
@@ -224,12 +224,12 @@ class INA219:
       """
       Swaps byte order for 16bit word. Caution: this does not
       check for +/- overflow nor does it deal with negative
-      values since we shouldn't be writting twos complement to
+      values since we shouldn't be writing twos complement to
       the ina219 device.
       :param value: int
       :return: int
       """
-      return ((value & 0xFF00) >> 8) | ((value & 0xFF) << 8)
+      return  ((value & 0xFF) << 8) | ((value & 0xFF00) >> 8)
 
   @staticmethod
   def _i2c_to_host(value):
@@ -238,19 +238,16 @@ class INA219:
       :param value: int
       :return: int
       """
-      lsb = (value & 0xFF00) >> 8
-      msb = (value & 0xFF) << 8
-      value = msb | lsb
+      value = ((value & 0xFF) << 8) | ((value & 0xFF00) >> 8)
 
       # Note: can't just extend 1 to most significant bit
       # since python will happily treat this as an overload
       # and convert int to long (python2.7). So do this in an
       # around about way by first taking the complement,
-      # add 1, clear the high bits, now make the result
+      # add 1, clear the high bits, and finally make the result
       # negative
       if value >= 0x8000:
-          value = (~value + 1) & 0xFFFF
-          value = -value
+          value = -((~value + 1) & 0xFFFF)
 
       return value
 
