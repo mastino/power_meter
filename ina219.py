@@ -238,7 +238,7 @@ class INA219:
       :param value: int
       :return: int
       """
-      lsb = c_short((value & 0xFF00) >> 8)
+      lsb = (value & 0xFF00) >> 8
       msb = (value & 0xFF) << 8
       value = msb | lsb
 
