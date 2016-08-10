@@ -141,9 +141,6 @@ class INA219:
       self.ina219_powerDivider_mW = 0
       self.i2c_bus = smbus.SMBus(n)
 
-      # keep around previous config and calibrtion register contents
-      self.orig_config = None
-      self.orig_calib = None
       self.calibrator = self._calibration_32V_2A
 
   def __str__(self):
@@ -157,25 +154,17 @@ class INA219:
 
   def begin(self):
       """
-      Configures ina219. First reads config and calibration registers so that they are
-      restored afterwards.
+      Configures ina219.
       """
-      self.orig_config = self._wireReadRegister(INA219_REG_CONFIG)
-      self.orig_calib = self._wireReadRegister(INA219_REG_CALIBRATION)
       self._reset()
       sleep(0.1)
       self.calibrator()
 
   def close(self):
       """
-      Resets ina219 device and restores previous configuration and calibration values.
-      Don't do anything if we do not have the original configuration and calibration values
+      Resets ina219 device.
       """
-      if self.orig_config and self.orig_calib:
-          self._reset()
-          sleep(0.1)
-          self._wireWriteRegister(INA219_REG_CONFIG, self.orig_config)
-          self._wireWriteRegister(INA219_REG_CALIBRATION, self.orig_calib)
+      self._reset()
 
   def setCalibration(self, calibrator):
       """
