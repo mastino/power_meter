@@ -242,7 +242,7 @@ class INA219:
       value = ((value & 0xFF) << 8) | ((value & 0xFF00) >> 8)
 
       # Note: can't just extend 1 to most significant bit
-      # since python will happily treat this as an overload
+      # since python will happily treat this as an overflow
       # and convert int to long (python2.7). So do this in an
       # around about way by first taking the complement,
       # add 1, clear the high bits, and finally make the result
