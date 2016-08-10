@@ -139,6 +139,7 @@ class INA219:
       self.ina219_calValue = 0
       self.ina219_currentDivider_mA = 0
       self.ina219_powerDivider_mW = 0
+      self.ina219_bus_num = n
       self.i2c_bus = smbus.SMBus(n)
 
       self.calibrator = self._calibration_32V_2A
@@ -151,6 +152,15 @@ class INA219:
       fmt = 'i2c_addr=0x%x, currentDivider_mA=%d, powerDivider_mW=%d, calValue=0x%x'
       return fmt % (self.ina219_i2c_addr, self.ina219_currentDivider_mA, self.ina219_powerDivider_mW,
                     self.ina219_calValue)
+
+  def __repr__(self):
+      """
+      Generate a string representation of self
+      :return: string
+      """
+      fmt = 'INA219(0x%x,%d)'
+      return fmt % (self.ina219_i2c_addr, self.i2c_bus_num)
+
 
   def begin(self):
       """
