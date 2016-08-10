@@ -148,9 +148,9 @@ class INA219:
       Generate a string with the current configuration.
       :return:  string
       """
-      fmt = 'i2c_addr=0x%x, currentDivider_mA=%d, powerDivider_mW=%d, calValue=0x%x, orig_conf=0x%x, orig_calib=0x%x'
+      fmt = 'i2c_addr=0x%x, currentDivider_mA=%d, powerDivider_mW=%d, calValue=0x%x'
       return fmt % (self.ina219_i2c_addr, self.ina219_currentDivider_mA, self.ina219_powerDivider_mW,
-                    self.ina219_calValue, self.orig_config, self.orig_calib)
+                    self.ina219_calValue)
 
   def begin(self):
       """
@@ -204,9 +204,6 @@ class INA219:
       return float(self._getCurrent_raw()) / self.ina219_currentDivider_mA
 
   # private class methods:
-
-  # The following multipliers are used to convert raw current and power
-  # values to mA and mW, taking into account the current config settings
 
   @staticmethod
   def _host_to_i2c(value):
@@ -280,6 +277,9 @@ class INA219:
       Gets the raw current value (16-bit signed integer, so +/- 32767
       :return:
       """
+      #TODO if ina219 occassionaly resets then need to do more than below
+      #TODO but first see how much a problem this really presents
+      #TODO before deciding what to do
       # Sometimes a sharp load will reset the INA219, which will
       # reset the cal register, meaning CURRENT and POWER will
       # not be available ... avoid this by always setting a cal
@@ -294,6 +294,9 @@ class INA219:
       Sets the reset bit on INA219 configuration register to reset device
       """
       self._wireWriteRegister(INA219_REG_CONFIG, INA219_CONFIG_RESET)
+
+  # The following multipliers are used to convert raw current and power
+  # values to mA and mW, taking into account the current config settings
 
   def _calibration_32V_2A(self):
       """
