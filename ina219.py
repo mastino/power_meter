@@ -29,7 +29,7 @@ Required python modules:
 
 import smbus
 from time import sleep
-from binascii import hexlify
+from ctypes import c_short
 
 # /*=========================================================================
 #    I2C ADDRESS/BITS
@@ -238,18 +238,21 @@ class INA219:
       :param value: int
       :return: int
       """
-      lsb = (value & 0xFF00) >> 8
+      lsb = c_short((value & 0xFF00) >> 8)
       msb = (value & 0xFF) << 8
+      value = msb | lsb
 
-      # TODO Remove debug code
-      print('lsb=0x%x' % lsb)
-      print('msb=0x%x' % msb)
-      # assume python is using 32bit int (true for Python 2)
-      if msb >= 0x8000:
-          msb = msb | 0xFFFF0000
-          print('msb=0x%x' % msb)
+      # Note: can't just extend 1 to most significant bit
+      # since python will happily treat this as an overload
+      # and convert int to long (python2.7). So do this in an
+      # around about way by first taking the complement,
+      # add 1, clear the high bits, now make the result
+      # negative
+      if value >= 0x8000:
+          value = (~value + 1) & 0xFFFF
+          value = -value
 
-      return msb | lsb
+      return value
 
   def _wireWriteRegister(self, reg, value):
       """
@@ -257,7 +260,7 @@ class INA219:
       :param reg: unsigned 8 bit register value
       :param value: unsigned 16bit value
       """
-      #value = INA219._host_to_i2c(value)
+      value = INA219._host_to_i2c(value)
       self.i2c_bus.write_word_data(self.ina219_i2c_addr, reg, value)
 
   def _wireReadRegister(self, reg):
@@ -267,9 +270,8 @@ class INA219:
       :return: int
       """
       value = self.i2c_bus.read_word_data(self.ina219_i2c_addr, reg)
-      #return INA219._i2c_to_host(value)
-      return value
-  
+      return INA219._i2c_to_host(value)
+
   def _getBusVoltage_raw(self):
       """
       Gets the raw bus voltage (16-bit signed integer, so +/- 32767
