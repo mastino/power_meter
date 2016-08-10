@@ -178,7 +178,12 @@ class INA219:
           f = self._calibration_32V_1A
       elif calibrator == INA219_CALIB_16V_400mA:
           f = self._calibration_16V_400mA
-      self.calibrator = f
+
+      # call calibrator when changing and already calibrated ina219 device
+      if (self.calibrator is not f):
+        self.calibrator = f
+        if self.ina219_calValue != 0:
+            self.begin()
 
 
   def getBusVoltage_V(self):
@@ -212,7 +217,7 @@ class INA219:
       :return: float
       """
       return float(self._getPower_raw()) / self.ina219_powerDivider_mW
-  
+
   # private class methods:
 
   @staticmethod
