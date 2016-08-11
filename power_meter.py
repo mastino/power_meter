@@ -377,7 +377,7 @@ class PowerMeter:
 
 
         """
-        self.epoch = datetime.datetime.now()
+        self._epoch = datetime.datetime.now()
         self._monitor.start()
 
     def close(self):
