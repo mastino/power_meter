@@ -401,6 +401,7 @@ class PowerMeter:
 
         if power_data:
             timestamp = datetime.datetime.now()
+            power_data._time_stamp = timestamp
             if self._last:
                 period = timestamp - self._last.timestamp
                 self._avg_period = (0.8 * self._avg_period) + (0.2 * period.total_seconds())
@@ -409,7 +410,6 @@ class PowerMeter:
                 self._avg_period = period.total_seconds()
 
             # update with time and calibration information
-            power_data._timestamp = timestamp
             power_data._period = period
             power_data._volt_calib = self._volt_calib
             power_data._amp_calib = self._amp_calib
