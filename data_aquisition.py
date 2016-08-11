@@ -10,8 +10,9 @@ from sys import argv
 
 def main(pc_output_fh, line_output_fh, duration):
 
-    pc_monitor = pm.INA219_Monitor(1.0, 0x40, 1, ina219.INA219_CALIB_32V_1A)
-    line_monitor = pm.INA219_Monitor(1.0, 0x41, 1, ina219.INA219_CALIB_32V_1A)
+    interval = 0.0
+    pc_monitor = pm.INA219_Monitor(interval, 0x40, 1, ina219.INA219_CALIB_32V_1A)
+    line_monitor = pm.INA219_Monitor(interval, 0x41, 1, ina219.INA219_CALIB_32V_1A)
     pc_meter = pm.PowerMeter(pc_monitor)
     line_meter = pm.PowerMeter(line_monitor)
 
@@ -22,6 +23,14 @@ def main(pc_output_fh, line_output_fh, duration):
 
     header = ','.join([pm.PowerData.csv_header(), 'wattSeconds'])
     print(header)
+
+    # delay stdout output when interval is less than 1 second
+    delay = False
+    if interval < 1.0:
+        delay_limit = 1000
+        delay_count = 0
+        delay = True
+        
     while (datetime.datetime.now() - start < duration):
         try:
             pc_power = pc_meter.next(False)
@@ -33,12 +42,18 @@ def main(pc_output_fh, line_output_fh, duration):
             line_power = None
         if pc_power:
             line = ','.join([pc_power.csv(),str(pc_meter._calib_watt_seconds)])
-            print('pc', pc_power)
+            if delay and delay_count == delay_limit:
+                print('pc', pc_power)
             print(line, file=pc_output_fh)
         if line_power:
             line = ','.join([line_power.csv(),str(line_meter._calib_watt_seconds)])
-            print('line', line_power)
+            if delay and delay_count == delay_limit:
+                print('line', line_power)
             print(line, file=line_output_fh)
+        if delay and delay_count < delay_limit:
+            delay_count += 1
+        else:
+            delay_count = 0
 
 if __name__ == '__main__':
 
