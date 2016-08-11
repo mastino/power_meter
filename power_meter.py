@@ -7,7 +7,7 @@ from __future__ import print_function
 import serial
 import datetime
 import Queue
-from threading import thread
+from threading import Thread
 import copy
 from sys import stderr
 from time import sleep
@@ -27,27 +27,17 @@ class PowerData:
     DEFAULT_VOLT_CALIB = 1.0
     DEFAULT_AMP_CALIB = 1.0
 
-    def __init__(self, volts, milli_amps, milli_watts, time_stamp, period, volt_calib = DEFAULT_VOLT_CALIB,
+    def __init__(self, volts, amps, watts, time_stamp, period, volt_calib = DEFAULT_VOLT_CALIB,
                  amp_calib = DEFAULT_AMP_CALIB):
 
         self._time_stamp = time_stamp
         self._voltage = volts
-        self._ampere = milli_amps
-        self._wattage = milli_watts
+        self._ampere = amps
+        self._wattage = watts
         self._period = period
         self._volt_calib = volt_calib
         self._amp_calib = amp_calib
 
-        try:
-            self._voltage, self._ampere, self._wattage = PowerData.parse(data_str)
-        except ValueError as err:
-            msg = 'value error converting power data %s' % str(err)
-            output_error_message(msg)
-            raise err
-        except TypeError as err:
-            msg = 'type error converting power data %s' % str(err)
-            output_error_message(msg)
-            raise err
 
     @classmethod
     def from_PowerGauge(cls, data_str, time_stamp, period, volt_calib = DEFAULT_VOLT_CALIB,
@@ -148,7 +138,7 @@ class PowerData:
         return "\"%s\",%s,%s,%s,%s" % (self._time_stamp, self._period.total_seconds() ,self.volt(), self.amp(), self.watt())
 
 
-class PowerMonitor (thread):
+class PowerMonitor (Thread):
     """
     Abstract class for power device monitor
     """
@@ -159,6 +149,7 @@ class PowerMonitor (thread):
         :param callback:
         :return:
         """
+        Thread.__init__(self)
         self.callback = None
 
     def close(self):
@@ -173,6 +164,7 @@ class PowerGage_Monitor (PowerMonitor):
     """
 
     def __init__(self, port='/dev/ttyAMA0', baud=9600, timeout=2.0):
+        PowerMonitor.__init__(self)
         self._port = port
         self._baud = baud
         self._timeout = timeout        # serial read timeout in seconds (float)
@@ -248,7 +240,7 @@ class INA219_Monitor (PowerMonitor):
         :param i2c_device_num: int - bus number of i2c device ina219 is attached (e.g /dev/i2c-n where n
                                      is i2c_device_num
         """
-
+        PowerMonitor.__init__(self)
         self._meter = ina219.INA219(addr, i2c_device_num)
         self._meter.setCalibration(calibrator)
         self._monitor = False
