@@ -159,7 +159,7 @@ class INA219:
       :return: string
       """
       fmt = 'INA219(0x%x,%d)'
-      return fmt % (self.ina219_i2c_addr, self.i2c_bus_num)
+      return fmt % (self.ina219_i2c_addr, self.ina219_bus_num)
 
 
   def begin(self):
@@ -346,7 +346,7 @@ class INA219:
 
       These calculations assume a 0.1 ohm resistor is present.
       """
-
+      # TODO there is an error in power divisor that needs fixing
       # By default we use a pretty huge range for the input voltage,
       # which probably isn't the most appropriate choice for system
       # that don't use a lot of power.  But all of the calculations
