@@ -7,14 +7,14 @@ from __future__ import print_function
 import serial
 import datetime
 import Queue
-import thread
+from threading import thread
 import copy
 from sys import stderr, exc_info
-
+from time import sleep
+import ina219
 
 def output_error_message(msg):
     print(msg, file=stderr)
-
 
 class PowerData:
     """
@@ -27,13 +27,13 @@ class PowerData:
     DEFAULT_VOLT_CALIB = 1.0
     DEFAULT_AMP_CALIB = 1.0
 
-    def __init__(self, data_str, time_stamp, period, volt_calib = DEFAULT_VOLT_CALIB,
+    def __init__(self, volts, milli_amps, milli_watts, time_stamp, period, volt_calib = DEFAULT_VOLT_CALIB,
                  amp_calib = DEFAULT_AMP_CALIB):
 
         self._time_stamp = time_stamp
-        self._voltage = None
-        self._ampere = None
-        self._wattage = None
+        self._voltage = volts
+        self._ampere = milli_amps
+        self._wattage = milli_watts
         self._period = period
         self._volt_calib = volt_calib
         self._amp_calib = amp_calib
@@ -48,6 +48,31 @@ class PowerData:
             msg = 'type error converting power data %s' % str(err)
             output_error_message(msg)
             raise err
+
+    @classmethod
+    def from_PowerGauge(cls, data_str, time_stamp, period, volt_calib = DEFAULT_VOLT_CALIB,
+                 amp_calib = DEFAULT_AMP_CALIB):
+        """
+
+        :param data_str:
+        :param time_stamp:
+        :param period:
+        :param volt_calib:
+        :param amp_calib:
+        :return:
+        """
+        try:
+            voltage, ampere, wattage = PowerData.parse(data_str)
+        except ValueError as err:
+            msg = 'value error converting power data %s' % str(err)
+            output_error_message(msg)
+            raise err
+        except TypeError as err:
+            msg = 'type error converting power data %s' % str(err)
+            output_error_message(msg)
+            raise err
+        return cls(PowerData(voltage, ampere, wattage, time_stamp, period, volt_calib,
+                             amp_calib))
 
     @property
     def timestamp(self):
@@ -122,24 +147,153 @@ class PowerData:
     def csv(self, calib=True):
         return "\"%s\",%s,%s,%s,%s" % (self._time_stamp, self._period.total_seconds() ,self.volt(), self.amp(), self.watt())
 
+
+class PowerMonitor (thread):
+    """
+    Abstract class for power device monitor
+    """
+
+    def __init__(self, callback):
+        """
+        Function called with new powerdata object
+        :param callback:
+        :return:
+        """
+        self.callback = callback
+
+    def close(self):
+        """
+        Take actions necessary to shutdown the montior and force run() to terminate
+        """
+        pass
+
+class PowerGage_Monitor (PowerMonitor):
+    """
+    Monitors Adafruit PowerGuage on serial port
+    """
+
+    def __init__(self, callback, port='/dev/ttyAMA0', baud=9600, timeout=2.0):
+        PowerMonitor.__init__(self, callback)
+        self._port = port
+        self._baud = baud
+        self._timeout = timeout        # serial read timeout in seconds (float)
+        self._ser = None
+        self._serial_timeout_count = 0
+        self._monitor = False
+
+    def close(self):
+        """
+        Sets flag to exit monitoring loop, close serial connection and terminate
+        """
+        self._monitor = False
+
+    def run(self):
+        """
+        Opens serial port and starts monitoring of PowerGuage
+        """
+        try:
+            self._ser = serial.Serial(port=self._port, baudrate=self._baud, timeout=self._timeout)
+        except ValueError as err:
+            msg = 'Invalid Serial argument: %s' % str(err)
+            output_error_message(msg)
+            self._ser = None
+        except serial.SerialException as err:
+            msg = 'Error opening serial port %s' % self._port
+            output_error_message(msg)
+            self._ser = None
+
+        if self._ser:
+            self._monitor = True
+
+        while self._monitor:
+            data_str = None
+            try:
+                data_str = self._ser.readline()
+            except ValueError as err:
+                # shouldn't happen
+                msg = 'ValueError in monitor: %s' % str(err)
+                output_error_message(msg)
+            except serial.SerialTimeoutException as err:
+                self._serial_timeout_count += 1
+                msg = 'Serial timeout: (%d)' % self._serial_timeout_count
+                output_error_message(msg)
+            except serial.SerialException as err:
+                # shouldn't happen
+                msg = 'SerialException in monitor: %s' % str(err)
+                output_error_message(msg)
+
+            if data_str:
+                try:
+                    power_data = PowerData.from_PowerGauge(data_str, None, None, None, None)
+                except:
+                    power_data = None
+
+                if power_data:
+                    self.callback(power_data)
+
+        if self._ser:
+            self._ser.close()
+
+
+class INA219_Monitor (PowerMonitor):
+    """
+    Monitors any ina219 device on smbus
+    """
+
+    def __init__(self, callback, interval, addr, i2c_device_num, calibrator=ina219.INA219_CALIB_32V_2A):
+        """
+        Runs as a concurrent thread to read from an ina219 device attached to local i2c (SMBus).
+        :param callback: method to handle latest power data object
+        :param interval: float in seconds. Read interval for ina219
+        :param addr: int - i2c bus address of ina219 device
+        :param i2c_device_num: int - bus number of i2c device ina219 is attached (e.g /dev/i2c-n where n
+                                     is i2c_device_num
+        """
+        PowerMonitor.__init__(self, callback)
+
+        self._meter = ina219.INA219(addr, i2c_device_num)
+        self._meter.setCalibration(calibrator)
+        self._monitor = False
+        self._interval = interval
+
+    def close(self):
+        """
+        Sets flag to stop monitoring
+        """
+        self._monitor = False
+
+    def run(self):
+        """
+        Sets calibration of ina219 and starts monitoring
+        :return:
+        """
+
+        self._meter.begin()
+        self._monitor = True
+
+        while self._monitor:
+
+            voltage = self._meter.getBusVoltage_V()
+            ampere = self._meter.getCurrent_mA() / 1000
+            power = self._meter.getPower_mW() / 1000
+
+            power_data = PowerData(voltage, ampere, power, None, None, None, None)
+            self.callback(power_data)
+            sleep(self._interval)
+
+        self._meter.close()
+
 class PowerMeter:
     """
 
     """
-    def __init__(self, port='/dev/ttyAMA0', baud=9600, timeout=2.0):
+    def __init__(self, monitor):
         """
-        :param port:     (string) device path for serial port
-        :param baud:     (int) baud rate for ttl communications
-        :param timeout: (float) serial read timeout in seconds
+        :param monitor
         """
         self._debug = False
-        self._port = port
-        self._baud = baud
-        self._timeout = timeout        # serial read timeout in seconds (float)
 
-        self._ser = None
-        self._monitor = None
-        self._serial_timeout_count = 0
+        self._monitor = monitor
 
         self._volt_calib = 1.0       # vector of calibration values for voltage
         self._amp_calib = 1.0        # vector of calibration values for amperage
@@ -230,32 +384,8 @@ class PowerMeter:
 
 
         """
-        self.close()
-        try:
-            self._ser = serial.Serial(port=self._port, baudrate=self._baud, timeout=self._timeout)
-        except ValueError as err:
-            msg = 'Invalid Serial argument: %s' % str(err)
-            output_error_message(msg)
-            self._ser = None
-        except serial.SerialException as err:
-            msg = 'Error opening serial port %s' % self._port
-            output_error_message(msg)
-            self._ser = None
-
-        if self._ser:
-            try:
-                self._epoch = datetime.datetime.now()
-                if self._debug:
-                    print('Starting thread ...',end='',file=stderr)
-                self._monitor = thread.start_new_thread(self._monitor_thread, ())
-                if self._debug:
-                    print(' started',file=stderr)
-            except:
-                msg = 'Error starting monitor thread: %s' % exc_info()[0]
-                output_error_message(msg)
-                self._monitor = None
-                self._epoch = None
-
+        self.epoch = datetime.datetime.now()
+        self._monitor.start()
 
     def close(self):
         """
@@ -264,66 +394,40 @@ class PowerMeter:
         """
         try:
             if self._monitor:
-                self._monitor.exit()
-            if self._ser:
-                self._ser.close()
+                self._monitor.close()
         except:
             pass
 
         self._monitor = None
-        self._ser = None
 
-
-    def _monitor_thread(self):
+    def _update(self, power_data):
         """
-        Runs as a concurrent thread to read from Power Gauge updating power values. This funtion
-        is also responsible for handling serial read and connectivity errors attempting to maintain
-        connection to the Power Guage.
+        Given as callback method to monitor. Takes PowerData object, computes the period, and updates
+        data structures.
         """
-        while True:
-            data_str = None
-            try:
-                if self._debug:
-                    print('Waiting for data ...',end='',file=stderr)
-                data_str = self._ser.readline()
-                if self._debug:
-                    print('got %s' % data_str, file=stderr)
-            except ValueError as err:
-                # shouldn't happen
-                msg = 'ValueError in monitor: %s' % str(err)
-                output_error_message(msg)
-            except serial.SerialException as err:
-                # shouldn't happen
-                msg = 'SerialException in monitor: %s' % str(err)
-                output_error_message(msg)
-            except serial.SerialTimeoutException as err:
-                self._serial_timeout_count += 1
-                msg = 'Serial timeout: (%d)' % self._serial_timeout_count
-                output_error_message(msg)
 
-            if data_str:
-                timestamp = datetime.datetime.now()
-                if self._last:
-                    period = timestamp - self._last.timestamp
-                    self._avg_period = (0.8 * self._avg_period) + (0.2 * period.total_seconds())
-                else:
-                    period = timestamp - self._epoch
-                    self._avg_period = period.total_seconds()
+        if power_data:
+            timestamp = datetime.datetime.now()
+            if self._last:
+                period = timestamp - self._last.timestamp
+                self._avg_period = (0.8 * self._avg_period) + (0.2 * period.total_seconds())
+            else:
+                period = timestamp - self._epoch
+                self._avg_period = period.total_seconds()
 
-                try:
-                    power_data = PowerData(data_str, timestamp, period, self._volt_calib, self._amp_calib)
-                    if self._debug:
-                        print(power_data)
-                except:
-                    power_data = None
+            # update with time and calibration information
+            power_data._timestamp = timestamp
+            power_data._period = period
+            power_data._volt_calib = self._volt_calib
+            power_data._amp_calib = self._amp_calib
 
-                if power_data:
-                    self._last = copy.deepcopy(power_data)
-                    self._watt_seconds += self._last.watt(False) * period.total_seconds()
-                    self._calib_watt_seconds += self._last.watt(True) * period.total_seconds()
+            # update data structures
+            self._last = copy.deepcopy(power_data)
+            self._watt_seconds += self._last.watt(False) * period.total_seconds()
+            self._calib_watt_seconds += self._last.watt(True) * period.total_seconds()
 
-                    if self._queue.full():
-                        self._queue.get(False)
-                    self._queue.put(power_data)
+            if self._queue.full():
+                self._queue.get(False)
+            self._queue.put(power_data)
 
 
