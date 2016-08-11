@@ -9,7 +9,7 @@ import datetime
 import Queue
 from threading import thread
 import copy
-from sys import stderr, exc_info
+from sys import stderr
 from time import sleep
 import ina219
 
@@ -153,13 +153,13 @@ class PowerMonitor (thread):
     Abstract class for power device monitor
     """
 
-    def __init__(self, callback):
+    def __init__(self):
         """
         Function called with new powerdata object
         :param callback:
         :return:
         """
-        self.callback = callback
+        self.callback = None
 
     def close(self):
         """
@@ -172,8 +172,7 @@ class PowerGage_Monitor (PowerMonitor):
     Monitors Adafruit PowerGuage on serial port
     """
 
-    def __init__(self, callback, port='/dev/ttyAMA0', baud=9600, timeout=2.0):
-        PowerMonitor.__init__(self, callback)
+    def __init__(self, port='/dev/ttyAMA0', baud=9600, timeout=2.0):
         self._port = port
         self._baud = baud
         self._timeout = timeout        # serial read timeout in seconds (float)
@@ -240,7 +239,7 @@ class INA219_Monitor (PowerMonitor):
     Monitors any ina219 device on smbus
     """
 
-    def __init__(self, callback, interval, addr, i2c_device_num, calibrator=ina219.INA219_CALIB_32V_2A):
+    def __init__(self, interval, addr, i2c_device_num, calibrator=ina219.INA219_CALIB_32V_2A):
         """
         Runs as a concurrent thread to read from an ina219 device attached to local i2c (SMBus).
         :param callback: method to handle latest power data object
@@ -249,7 +248,6 @@ class INA219_Monitor (PowerMonitor):
         :param i2c_device_num: int - bus number of i2c device ina219 is attached (e.g /dev/i2c-n where n
                                      is i2c_device_num
         """
-        PowerMonitor.__init__(self, callback)
 
         self._meter = ina219.INA219(addr, i2c_device_num)
         self._meter.setCalibration(calibrator)
@@ -294,6 +292,7 @@ class PowerMeter:
         self._debug = False
 
         self._monitor = monitor
+        self._monitor.callback = self._update
 
         self._volt_calib = 1.0       # vector of calibration values for voltage
         self._amp_calib = 1.0        # vector of calibration values for amperage
@@ -329,7 +328,9 @@ class PowerMeter:
         :param calib:
         :return:
         """
-        return self._last.watt(calib)
+        # TODO add ability to override calibration for ina219 devices
+        # TODO which provide their own calibration mechanism
+        return self._last.watt(False)
 
 
     def next(self, block=True):
