@@ -77,4 +77,4 @@ if __name__ == '__main__':
         duration = datetime.timedelta(minutes=5)
 
 
-    main(interval, pc_fh, line_fh, duration)
+    main(pc_fh, line_fh, interval, duration)
