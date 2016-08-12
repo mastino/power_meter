@@ -42,12 +42,12 @@ def main(pc_output_fh, line_output_fh, interval, duration):
         if pc_power:
             line = ','.join([pc_power.csv(),str(pc_meter._calib_watt_seconds)])
             if not delay or delay_count == delay_limit:
-                print('pc', pc_power)
+                print('pc', pc_meter._last)
             print(line, file=pc_output_fh)
         if line_power:
             line = ','.join([line_power.csv(),str(line_meter._calib_watt_seconds)])
             if not delay or delay_count == delay_limit:
-                print('line', line_power)
+                print('line', line_power, line_meter._last)
             print(line, file=line_output_fh)
         if delay:
             if delay_count < delay_limit:
