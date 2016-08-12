@@ -30,7 +30,7 @@ def main(pc_output_fh, line_output_fh, duration):
         delay_limit = 1000
         delay_count = 0
         delay = True
-        
+
     while (datetime.datetime.now() - start < duration):
         try:
             pc_power = pc_meter.next(False)
