@@ -41,18 +41,19 @@ def main(pc_output_fh, line_output_fh, interval, duration):
             line_power = None
         if pc_power:
             line = ','.join([pc_power.csv(),str(pc_meter._calib_watt_seconds)])
-            if delay and delay_count == delay_limit:
-                print('pc', pc_power)
+            #if delay and delay_count == delay_limit:
+            print('pc', pc_power)
             print(line, file=pc_output_fh)
         if line_power:
             line = ','.join([line_power.csv(),str(line_meter._calib_watt_seconds)])
-            if delay and delay_count == delay_limit:
-                print('line', line_power)
+            #if delay and delay_count == delay_limit:
+            print('line', line_power)
             print(line, file=line_output_fh)
-        if delay and delay_count < delay_limit:
-            delay_count += 1
-        else:
-            delay_count = 0
+        if delay:
+            if delay_count < delay_limit:
+                delay_count += 1
+            else:
+                delay_count = 0
 
 if __name__ == '__main__':
 
