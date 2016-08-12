@@ -8,9 +8,8 @@ import datetime
 from Queue import Empty
 from sys import argv
 
-def main(pc_output_fh, line_output_fh, duration):
+def main(pc_output_fh, line_output_fh, interval, duration):
 
-    interval = 0.0
     pc_monitor = pm.INA219_Monitor(interval, 0x40, 1, ina219.INA219_CALIB_32V_1A)
     line_monitor = pm.INA219_Monitor(interval, 0x41, 1, ina219.INA219_CALIB_32V_1A)
     pc_meter = pm.PowerMeter(pc_monitor)
@@ -57,6 +56,7 @@ def main(pc_output_fh, line_output_fh, duration):
 
 if __name__ == '__main__':
 
+    # filename input
     if len(argv) >= 2:
         file_name = argv[1]
     else:
@@ -65,7 +65,13 @@ if __name__ == '__main__':
     pc_fh = open(file_name+'_pc.csv', 'w')
     line_fh = open(file_name+'_line.csv', 'w')
 
+    # interval input
     if len(argv) >= 3:
+        interval = float(argv[2])
+    else:
+        interval = 1.0
+
+    if len(argv) >= 4:
         duration = datetime.timedelta(minutes=argv[2])
     else:
         duration = datetime.timedelta(minutes=5)
