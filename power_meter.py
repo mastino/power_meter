@@ -171,6 +171,7 @@ class PowerGage_Monitor (PowerMonitor):
         self._ser = None
         self._serial_timeout_count = 0
         self._monitor = False
+        self._last_timestamp = None
 
     def close(self):
         """
@@ -220,6 +221,14 @@ class PowerGage_Monitor (PowerMonitor):
                     power_data = None
 
                 if power_data:
+                    timestamp = datetime.datetime.now()
+                    if self._last_timestamp:
+                        period = timestamp - self._last_timestamp
+                    else:
+                        period = datetime.timedelta()
+                    power_data._time_stamp = timestamp
+                    power_data._period = period
+                    self._last_timestamp = timestamp
                     self.callback(power_data)
 
         if self._ser:
@@ -245,6 +254,7 @@ class INA219_Monitor (PowerMonitor):
         self._meter.setCalibration(calibrator)
         self._monitor = False
         self._interval = interval
+        self._last_timestamp = None
 
     def close(self):
         """
@@ -267,7 +277,12 @@ class INA219_Monitor (PowerMonitor):
             ampere = self._meter.getCurrent_mA() / 1000
             power = self._meter.getPower_mW() / 1000
 
-            power_data = PowerData(voltage, ampere, power, None, None, None, None)
+            timestamp = datetime.datetime.now()
+            if self._last_timestamp:
+                period = timestamp - self._last_timestamp
+            else:
+                period = datetime.timedelta()
+            power_data = PowerData(voltage, ampere, power, timestamp, period, None, None)
             self.callback(power_data)
             sleep(self._interval)
 
@@ -400,17 +415,13 @@ class PowerMeter:
         """
 
         if power_data:
-            timestamp = datetime.datetime.now()
-            power_data._time_stamp = timestamp
             if self._last:
-                period = timestamp - self._last.timestamp
-                self._avg_period = (0.8 * self._avg_period) + (0.2 * period.total_seconds())
+                self._avg_period = (0.8 * self._avg_period) + (0.2 * power_data._period.total_seconds())
             else:
-                period = timestamp - self._epoch
+                period = power_data.timestamp - self._epoch
                 self._avg_period = period.total_seconds()
 
-            # update with time and calibration information
-            power_data._period = period
+            # update with calibration information
             power_data._volt_calib = self._volt_calib
             power_data._amp_calib = self._amp_calib
 
