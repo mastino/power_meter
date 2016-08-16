@@ -23,12 +23,9 @@ def main(pc_output_fh, line_output_fh, interval, duration):
     header = ','.join([pm.PowerData.csv_header(), 'wattSeconds'])
     print(header)
 
-    # delay stdout output when interval is less than 1 second
-    delay = False
-    if interval < 1.0:
-        delay_limit = 1000
-        delay_count = 0
-        delay = True
+    # output once per second to stdout
+    mark = datetime.datetime.now()
+    output_delay = datetime.timedelta(seconds=60)
 
     while (datetime.datetime.now() - start < duration):
         try:
@@ -45,14 +42,11 @@ def main(pc_output_fh, line_output_fh, interval, duration):
         if line_power:
             line = ','.join([line_power.csv(),str(line_meter._calib_watt_seconds)])
             print(line, file=line_output_fh)
-        if not delay or delay_count == delay_limit:
+        check_time = datetime.datetime.now()
+        if check_time - mark >= output_delay:
             print('pc  ', pc_meter._last)
             print('line', line_meter._last)
-        if delay:
-            if delay_count < delay_limit:
-                delay_count += 1
-            else:
-                delay_count = 0
+            mark = check_time
 
     pc_meter.close()
     line_meter.close()
