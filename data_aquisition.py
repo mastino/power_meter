@@ -46,13 +46,16 @@ def main(pc_output_fh, line_output_fh, interval, duration):
             line = ','.join([line_power.csv(),str(line_meter._calib_watt_seconds)])
             print(line, file=line_output_fh)
         if not delay or delay_count == delay_limit:
-            print('pc', pc_meter._last)
+            print('pc  ', pc_meter._last)
             print('line', line_meter._last)
         if delay:
             if delay_count < delay_limit:
                 delay_count += 1
             else:
                 delay_count = 0
+
+    pc_meter.close()
+    line_meter.close()
 
 if __name__ == '__main__':
 
@@ -75,7 +78,7 @@ if __name__ == '__main__':
     if len(argv) >= 4:
         duration = datetime.timedelta(minutes=argv[2])
     else:
-        duration = datetime.timedelta(minutes=5)
+        duration = datetime.timedelta(minutes=1)
 
-
+    print('interval=%f, duration=%d' % (interval, duration))
     main(pc_fh, line_fh, interval, duration)

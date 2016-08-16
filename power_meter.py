@@ -226,6 +226,7 @@ class PowerGage_Monitor (PowerMonitor):
                         period = timestamp - self._last_timestamp
                     else:
                         period = datetime.timedelta()
+                        self._last_timestamp = timestamp
                     power_data._time_stamp = timestamp
                     power_data._period = period
                     self._last_timestamp = timestamp
@@ -282,6 +283,7 @@ class INA219_Monitor (PowerMonitor):
                 period = timestamp - self._last_timestamp
             else:
                 period = datetime.timedelta()
+                self._last_timestamp = timestamp
             power_data = PowerData(voltage, ampere, power, timestamp, period, None, None)
             self.callback(power_data)
             sleep(self._interval)
@@ -400,13 +402,13 @@ class PowerMeter:
 
 
         """
-        try:
-            if self._monitor:
-                self._monitor.close()
-        except:
-            pass
 
+        if self._monitor:
+            self._monitor.close()
+            self._monitor.
         self._monitor = None
+        self._monitor.close()
+        self._monitor.join()
 
     def _update(self, power_data):
         """
