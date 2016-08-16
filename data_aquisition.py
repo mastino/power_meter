@@ -28,7 +28,7 @@ def main(pc_output_fh, line_output_fh, interval, duration):
     start_time = datetime.datetime.now()
     mark_time = start_time
     check_time = start_time
-    output_delay = datetime.timedelta(seconds=60)
+    output_delay = datetime.timedelta(seconds=1)
 
     while check_time - start < duration:
         try:
