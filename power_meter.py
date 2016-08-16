@@ -405,10 +405,8 @@ class PowerMeter:
 
         if self._monitor:
             self._monitor.close()
-            self._monitor.
-        self._monitor = None
-        self._monitor.close()
-        self._monitor.join()
+            self._monitor.join()
+            self._monitor = None
 
     def _update(self, power_data):
         """
