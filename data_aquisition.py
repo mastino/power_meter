@@ -70,9 +70,9 @@ if __name__ == '__main__':
 
     # interval input
     if len(argv) >= 3:
-        interval = float(argv[2])
+        interval = float(argv[3])
     else:
-        interval = 0.0
+        interval = 1.0
 
     # duration input
     if len(argv) >= 4:
