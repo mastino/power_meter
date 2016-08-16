@@ -70,13 +70,13 @@ if __name__ == '__main__':
 
     # interval input
     if len(argv) >= 3:
-        interval = float(argv[3])
+        interval = float(argv[2])
     else:
         interval = 1.0
 
     # duration input
     if len(argv) >= 4:
-        duration = datetime.timedelta(minutes=int(argv[4]))
+        duration = datetime.timedelta(minutes=int(argv[3]))
     else:
         duration = datetime.timedelta(minutes=1)
 
