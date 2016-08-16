@@ -46,7 +46,7 @@ def main(pc_output_fh, line_output_fh, interval, duration):
             line = ','.join([line_power.csv(),str(line_meter._calib_watt_seconds)])
             print(line, file=line_output_fh)
         if check_time - mark_time >= output_delay:
-            print('pc  ', pc_meter._last)
+            print('batt', pc_meter._last)
             print('line', line_meter._last)
             mark_time = check_time
         check_time = datetime.datetime.now()
