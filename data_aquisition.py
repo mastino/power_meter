@@ -76,7 +76,7 @@ if __name__ == '__main__':
 
     # duration input
     if len(argv) >= 4:
-        duration = datetime.timedelta(minutes=int(argv[2]))
+        duration = datetime.timedelta(minutes=int(argv[4]))
     else:
         duration = datetime.timedelta(minutes=1)
 
