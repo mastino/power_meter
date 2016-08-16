@@ -224,6 +224,7 @@ class PowerGage_Monitor (PowerMonitor):
                     timestamp = datetime.datetime.now()
                     if self._last_timestamp:
                         period = timestamp - self._last_timestamp
+                        self._last_timestamp = timestamp
                     else:
                         period = datetime.timedelta()
                         self._last_timestamp = timestamp
@@ -281,6 +282,7 @@ class INA219_Monitor (PowerMonitor):
             timestamp = datetime.datetime.now()
             if self._last_timestamp:
                 period = timestamp - self._last_timestamp
+                self._last_timestamp = timestamp
             else:
                 period = datetime.timedelta()
                 self._last_timestamp = timestamp
