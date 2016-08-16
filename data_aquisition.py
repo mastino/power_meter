@@ -80,5 +80,5 @@ if __name__ == '__main__':
     else:
         duration = datetime.timedelta(minutes=1)
 
-    print('interval=%f, duration=%d' % (interval, duration))
+    print('interval=%f, duration=%s' % (interval, duration))
     main(pc_fh, line_fh, interval, duration)
