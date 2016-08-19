@@ -484,6 +484,7 @@ class INA219:
       # TODO: the cal constant can be extended to externaly calibrate the ina219
 
       current_LSB = expected_max_amp / INA219_MAX_ADC_RES
+      print('current_LSB = %d / %d' % (expected_max_amp, INA219_MAX_ADC_RES))
       self.ina219_calValue = int(trunc(INA219_CURRENT_SCALING / (current_LSB * INA219_SHUNT_OHM)))
 
       # Current in ampere is obtained from the current register by multiplying by the current_LSB. In turn
