@@ -29,6 +29,10 @@ Required python modules:
 
 import smbus
 from time import sleep
+from math import trunc
+
+# ina219 shunt resistance
+INA219_SHUNT_OHM = 0.1
 
 
 # /*=========================================================================
@@ -48,12 +52,19 @@ INA219_CONFIG_RESET                    = 0x8000  # Reset Bit
 INA219_CONFIG_BVOLTAGERANGE_MASK       = 0x2000  # Bus Voltage Range Mask
 INA219_CONFIG_BVOLTAGERANGE_16V        = 0x0000  # 0-16V Range
 INA219_CONFIG_BVOLTAGERANGE_32V        = 0x2000  # 0-32V Range
+# allowed bus voltage ranges
+INA219_CONFIG_BVOLTAGERANGE_OK = frozenset([INA219_CONFIG_BVOLTAGERANGE_16V,INA219_CONFIG_BVOLTAGERANGE_16V])
 
 INA219_CONFIG_GAIN_MASK                = 0x1800  # Gain Mask
 INA219_CONFIG_GAIN_1_40MV              = 0x0000  # Gain 1, 40mV Range
 INA219_CONFIG_GAIN_2_80MV              = 0x0800  # Gain 2, 80mV Range
 INA219_CONFIG_GAIN_4_160MV             = 0x1000  # Gain 4, 160mV Range
 INA219_CONFIG_GAIN_8_320MV             = 0x1800  # Gain 8, 320mV Range
+# index of shunt gain config to maximum amperage
+INA219_IDX_GAIN_TO_MILLIAMP = ((INA219_CONFIG_GAIN_1_40MV, 40/INA219_SHUNT_OHM),
+                               (INA219_CONFIG_GAIN_2_80MV, 80/INA219_SHUNT_OHM),
+                               (INA219_CONFIG_GAIN_4_160MV, 160/INA219_SHUNT_OHM),
+                               (INA219_CONFIG_GAIN_8_320MV, 320/INA219_SHUNT_OHM))
 
 INA219_CONFIG_BADCRES_MASK             = 0x0780  # Bus ADC Resolution Mask
 INA219_CONFIG_BADCRES_9BIT             = 0x0080  # 9-bit bus res = 0..511
@@ -73,7 +84,11 @@ INA219_CONFIG_SADCRES_12BIT_16S_8510US = 0x0060  # 16 x 12-bit shunt samples ave
 INA219_CONFIG_SADCRES_12BIT_32S_17MS   = 0x0068  # 32 x 12-bit shunt samples averaged together
 INA219_CONFIG_SADCRES_12BIT_64S_34MS   = 0x0070  # 64 x 12-bit shunt samples averaged together
 INA219_CONFIG_SADCRES_12BIT_128S_69MS  = 0x0078  # 128 x 12-bit shunt samples averaged together
-
+# allowed shunt ADC configuration
+INA219_CONFIG_SADCRES_OK = frozenset([INA219_CONFIG_SADCRES_12BIT_1S_532US, INA219_CONFIG_SADCRES_12BIT_2S_1060US,
+                                      INA219_CONFIG_SADCRES_12BIT_4S_2130US, INA219_CONFIG_SADCRES_12BIT_8S_4260US,
+                                      INA219_CONFIG_SADCRES_12BIT_16S_8510US,INA219_CONFIG_SADCRES_12BIT_32S_17MS,
+                                      INA219_CONFIG_SADCRES_12BIT_64S_34MS, INA219_CONFIG_SADCRES_12BIT_128S_69MS])
 INA219_CONFIG_MODE_MASK                = 0x0007  # Operating Mode Mask
 INA219_CONFIG_MODE_POWERDOWN           = 0x0000
 INA219_CONFIG_MODE_SVOLT_TRIGGERED     = 0x0001
@@ -82,7 +97,10 @@ INA219_CONFIG_MODE_SANDBVOLT_TRIGGERED = 0x0003
 INA219_CONFIG_MODE_ADCOFF              = 0x0004
 INA219_CONFIG_MODE_SVOLT_CONTINUOUS    = 0x0005
 INA219_CONFIG_MODE_BVOLT_CONTINUOUS    = 0x0006
-INA219_CONFIG_MODE_SANDBVOLT_CONTINUOUS = 0x0007	
+INA219_CONFIG_MODE_SANDBVOLT_CONTINUOUS = 0x0007
+# allowed operating modes
+INA219_CONFIG_MODE_OK = frozenset([INA219_CONFIG_MODE_SANDBVOLT_CONTINUOUS,INA219_CONFIG_MODE_SANDBVOLT_TRIGGERED])
+
 # /*=========================================================================*/
 
 # /*=========================================================================
@@ -118,6 +136,16 @@ INA219_REG_CALIBRATION                 = 0x05
 # default device for I2C bus
 INA219_I2C_DEVICE_NUM = 1  # corresponds to /dev/i2c-1
 
+# permitted expected ampere range in milli ampere
+INA219_MIN_EXP_AMP = 40 / INA219_SHUNT_OHM
+INA219_MAX_EXP_AMP = 320 / INA219_SHUNT_OHM
+
+# maximimum number of current bins for 12bit shunt adc
+INA219_MAX_ADC_RES = 32767
+
+# ina219 internal current scaling constant
+INA219_CURRENT_SCALING = 0.04096
+
 # defined calibration methods
 INA219_CALIB_32V_2A    = 0
 INA219_CALIB_32V_1A    = 1
@@ -137,6 +165,7 @@ class INA219:
       """
       self.ina219_i2c_addr = addr
       self.ina219_calValue = 0
+      self.ina219_config = 0
       self.ina219_currentDivider_mA = 0
       self.ina219_powerDivider_mW = 0
       self.ina219_bus_num = n
@@ -176,7 +205,65 @@ class INA219:
       """
       self._reset()
 
-  def setCalibration(self, calibrator):
+  def setCalibration(self, calibrator, samples=1):
+      """
+      Sets calibration values for ina219 using 'pre-configured settings' along
+      with user selected current sample averaging.
+
+      :param calibrator: one of INA219_CALIB_32V_2A (max 32 volt and 2 amp range),
+                                INA219_CALIB_32V_1A (max 32 volt and 1 amp range),
+                                INA219_CALIB_16V_400mA (max 16V and 400mA range)
+
+      :param samples: number of samples to average for current, this directly effects cycle time of
+                      ADC updates:
+                      num samples - update time
+                                1 -  532 usec
+                                2 -  1.06 msec
+                                4 -  2.13 msec
+                                8 -  4.26 msec
+                               16 -  8.51 msec
+                               32 - 17.02 msec
+                               64 - 34.05 msec
+                              128 - 68.10 msec
+      """
+      if samples == 1:
+          ina219_config_shunt = INA219_CONFIG_SADCRES_12BIT_1S_532US
+      elif samples == 2:
+          ina219_config_shunt = INA219_CONFIG_SADCRES_12BIT_2S_1060US
+      elif samples == 4:
+          ina219_config_shunt = INA219_CONFIG_SADCRES_12BIT_4S_2130US
+      elif samples == 8:
+          ina219_config_shunt = INA219_CONFIG_SADCRES_12BIT_8S_4260US
+      elif samples == 16:
+          ina219_config_shunt = INA219_CONFIG_SADCRES_12BIT_16S_8510US
+      elif samples == 32:
+          ina219_config_shunt = INA219_CONFIG_SADCRES_12BIT_32S_17MS
+      elif samples == 64:
+          ina219_config_shunt = INA219_CONFIG_SADCRES_12BIT_64S_34MS
+      elif samples == 128:
+          ina219_config_shunt = INA219_CONFIG_SADCRES_12BIT_128S_69MS
+      else:
+          raise ValueError
+
+      if calibrator == INA219_CALIB_32V_2A:
+          self._configeration(INA219_CONFIG_BVOLTAGERANGE_32V, 2000, ina219_config_shunt,
+                              INA219_CONFIG_MODE_SANDBVOLT_TRIGGERED)
+      elif calibrator == INA219_CALIB_32V_1A:
+          self._configeration(INA219_CONFIG_BVOLTAGERANGE_32V, 1000, ina219_config_shunt,
+                              INA219_CONFIG_MODE_SANDBVOLT_TRIGGERED)
+      elif calibrator == INA219_CALIB_16V_400mA:
+          self._configeration(INA219_CONFIG_BVOLTAGERANGE_32V, 400, ina219_config_shunt,
+                              INA219_CONFIG_MODE_SANDBVOLT_TRIGGERED)
+      else:
+          raise ValueError
+
+
+      self.calibrator = self._write_ina219_config()
+
+      if self.ina219_calValue != 0:
+          self.begin()
+
+  def setCalibration_old(self, calibrator):
       """
       Sets calibration function to use for ina219
       :param calibrator: one of the following (INA219_CALIB_32V_2A, INA219_CALIB_32V_1A, INA219_CALIB_16V_400MA)
@@ -331,12 +418,105 @@ class INA219:
 
   def _reset(self):
       """
-      Sets the reset bit on INA219 configuration register to reset device
+      Sets the reset bit on INA219 configuration register to reset device. This will
+      clear calibration/configuration of the ina219. Run begin() to restore
+      configuration before continuing use.
       """
       self._wireWriteRegister(INA219_REG_CONFIG, INA219_CONFIG_RESET)
 
+
   # The following multipliers are used to convert raw current and power
   # values to mA and mW, taking into account the current config settings
+
+  def _configuration(self, bus_volt_range, expected_max_amp, shunt_adc_res_sample, mode):
+      """
+      A more generalized ina219 configuration and calibration. Limited to using 12bit adc resolution
+      but allows flexibility in selecting bus voltage range, current (shunt voltage) range, and
+      current (shunt voltage) sampling.
+
+      NOTE: This configuration method assumes the ina219 is using a 0.1 Ohm shunt resister. This is true
+      for Andice Labs PowerPi and the Adafruit INA219 High Side DC Current Sensor.
+      :param bus_volt_range: INA219_CONFIG_BVOLTAGERANGE_16V or INA219_CONFIG_BVOLTAGERANGE_32V
+
+      :param expected_max_ampere: integer in milli ampere (allowed range: 400mA to 3200mA)
+
+      :param shunt_adc_res_sample: only 12bit adc resolution allowed, the number of shunt volatage samples
+                                   averages taken determines the overall ADC cycle time.
+                                   select 1-128 sample averageing from:
+                                        INA219_CONFIG_SADCRES_12BIT_1S_532US
+                                        INA219_CONFIG_SADCRES_12BIT_2S_1060US
+                                        INA219_CONFIG_SADCRES_12BIT_4S_2130US
+                                        INA219_CONFIG_SADCRES_12BIT_8S_4260US
+                                        INA219_CONFIG_SADCRES_12BIT_16S_8510US
+                                        INA219_CONFIG_SADCRES_12BIT_32S_17MS
+                                        INA219_CONFIG_SADCRES_12BIT_64S_34MS
+                                        INA219_CONFIG_SADCRES_12BIT_128S_69MS
+
+      :param mode: only triggered or continuous allowed:
+                        INA219_CONFIG_MODE_SANDBVOLT_TRIGGERED
+                        INA219_CONFIG_MODE_SANDBVOLT_CONTINUOUS
+
+      The following configuration was taken from the Texa Instruments INA219 application
+      document (SB0S448G-August 2008-Revised December 2015) along with insight from K. Townsend's calibration
+      methods.
+      """
+
+      # input validation
+      if bus_volt_range not in INA219_CONFIG_BVOLTAGERANGE_OK:
+          raise ValueError
+      if not (INA219_MIN_EXP_AMP <= expected_max_amp <= INA219_MAX_EXP_AMP):
+          raise ValueError
+      if shunt_adc_res_sample not in INA219_CONFIG_SADCRES_OK:
+          raise ValueError
+
+      # Calibration Register = trunc ( 0.04096 / (Current_LSB x R_shunt))
+      #
+      # R_shunt is the shunt resistance which is always assumed a value of 0.1 ohm.
+      #
+      # Current_LSB is the current per least significant bit and is set to maximum expected current divided
+      # by ADC bit resolution (only 2^15 is supported). This value is calculated from the expected_max_amp
+      # argument.
+      #
+      # The current register and power register hold values as determined by the following formulas:
+      #     Current Register = (Shunt Voltage REgister x Calibration Register) / 4096
+      #     Power Register = (Current Register x Bus Voltage Register) / 5000
+      #
+      # TODO: the cal constant can be extended to externaly calibrate the ina219
+
+      current_LSB = expected_max_amp / INA219_MAX_ADC_RES
+      self.ina219_calValue = int(trunc(INA219_CURRENT_SCALING / (current_LSB * INA219_SHUNT_OHM)))
+
+      # Current in ampere is obtained from the current register by multiplying by the current_LSB. In turn
+      # the power in watts is obtained by mulitplying the power register by power_LSB which is 50 times
+      # the current_LSB. The following constants are provided to produce milli-ampere and milliwatt conversion
+      # as a divisor in keeping with original code.
+      self.ina219_currentDivider_mA = (1000/current_LSB)
+      self.ina219_powerDivider_mW = (1000/(current_LSB * 50))
+
+      # Actual configuration of the ina219.
+      #
+      # Shunt gain is determined from the expected_max_amp. Selects gain which provides the lesser maximum_ampere
+      # which is greater or equal to the expected_max_amp.
+      for gain_config, max_milliamp in INA219_IDX_GAIN_TO_MILLIAMP:
+          if max_milliamp >= expected_max_amp:
+              break
+
+      # Set the configuration options
+      self.ina219_config = (bus_volt_range |
+                            gain_config |
+                            INA219_CONFIG_BADCRES_12BIT |
+                            shunt_adc_res_sample |
+                            mode)
+
+  def _write_ina219_config(self):
+      """
+      Writes configuration and calibration values to ina219 registers
+      """
+      if self.ina219_calValue != 0 and self.ina219_config != 0:
+          self._wireWriteRegister(INA219_REG_CONFIG, self.ina219_config)
+          self._wireWriteRegister(INA219_REG_CALIBRATION, self.ina219_calValue)
+
+
 
   def _calibration_32V_2A(self):
       """
