@@ -136,9 +136,9 @@ INA219_REG_CALIBRATION                 = 0x05
 # default device for I2C bus
 INA219_I2C_DEVICE_NUM = 1  # corresponds to /dev/i2c-1
 
-# permitted expected ampere range in milli ampere
-INA219_MIN_EXP_AMP = 40 / INA219_SHUNT_OHM
-INA219_MAX_EXP_AMP = 320 / INA219_SHUNT_OHM
+# permitted expected ampere range
+INA219_MIN_EXP_AMP = 0.040 / INA219_SHUNT_OHM
+INA219_MAX_EXP_AMP = 0.320 / INA219_SHUNT_OHM
 
 # maximimum number of current bins for 12bit shunt adc
 INA219_MAX_ADC_RES = 32767
@@ -246,13 +246,13 @@ class INA219:
           raise ValueError
 
       if calibrator == INA219_CALIB_32V_2A:
-          self._configuration(INA219_CONFIG_BVOLTAGERANGE_32V, 2000, ina219_config_shunt,
+          self._configuration(INA219_CONFIG_BVOLTAGERANGE_32V, 2.0, ina219_config_shunt,
                               INA219_CONFIG_MODE_SANDBVOLT_TRIGGERED)
       elif calibrator == INA219_CALIB_32V_1A:
-          self._configuration(INA219_CONFIG_BVOLTAGERANGE_32V, 1000, ina219_config_shunt,
+          self._configuration(INA219_CONFIG_BVOLTAGERANGE_32V, 1.0, ina219_config_shunt,
                               INA219_CONFIG_MODE_SANDBVOLT_TRIGGERED)
       elif calibrator == INA219_CALIB_16V_400mA:
-          self._configuration(INA219_CONFIG_BVOLTAGERANGE_32V, 400, ina219_config_shunt,
+          self._configuration(INA219_CONFIG_BVOLTAGERANGE_32V, 0.4, ina219_config_shunt,
                               INA219_CONFIG_MODE_SANDBVOLT_TRIGGERED)
       else:
           raise ValueError
@@ -484,7 +484,6 @@ class INA219:
       # TODO: the cal constant can be extended to externaly calibrate the ina219
 
       current_LSB = expected_max_amp / INA219_MAX_ADC_RES
-      print('current_LSB = %d / %d' % (expected_max_amp, INA219_MAX_ADC_RES))
       self.ina219_calValue = int(trunc(INA219_CURRENT_SCALING / (current_LSB * INA219_SHUNT_OHM)))
 
       # Current in ampere is obtained from the current register by multiplying by the current_LSB. In turn
