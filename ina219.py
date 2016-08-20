@@ -258,7 +258,7 @@ class INA219:
           raise ValueError
 
 
-      self.calibrator = self._write_ina219_config()
+      self.calibrator = self._write_ina219_config
 
       if self.ina219_calValue != 0:
           self.begin()
