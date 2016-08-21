@@ -491,7 +491,7 @@ class INA219:
       # the current_LSB. The following constants are provided to produce milli-ampere and milliwatt conversion
       # as a divisor in keeping with original code.
       self.ina219_currentDivider_mA = (1/(current_LSB * 1000))
-      self.ina219_powerDivider_mW = (1/(current_LSB * 1000 * 50))
+      self.ina219_powerDivider_mW = (1/(current_LSB * 1000 * 20))
 
       # Actual configuration of the ina219.
       #
