@@ -247,13 +247,13 @@ class INA219:
 
       if calibrator == INA219_CALIB_32V_2A:
           self._configuration(INA219_CONFIG_BVOLTAGERANGE_32V, 2.0, ina219_config_shunt,
-                              INA219_CONFIG_MODE_SANDBVOLT_TRIGGERED)
+                              INA219_CONFIG_MODE_SANDBVOLT_CONTINUOUS)
       elif calibrator == INA219_CALIB_32V_1A:
           self._configuration(INA219_CONFIG_BVOLTAGERANGE_32V, 1.0, ina219_config_shunt,
-                              INA219_CONFIG_MODE_SANDBVOLT_TRIGGERED)
+                              INA219_CONFIG_MODE_SANDBVOLT_CONTINUOUS)
       elif calibrator == INA219_CALIB_16V_400mA:
           self._configuration(INA219_CONFIG_BVOLTAGERANGE_32V, 0.4, ina219_config_shunt,
-                              INA219_CONFIG_MODE_SANDBVOLT_TRIGGERED)
+                              INA219_CONFIG_MODE_SANDBVOLT_CONTINUOUS)
       else:
           raise ValueError
 
