@@ -178,9 +178,9 @@ class INA219:
       Generate a string with the current configuration.
       :return:  string
       """
-      fmt = 'i2c_addr=0x%x, currentDivider_mA=%d, powerDivider_mW=%d, calValue=0x%x'
-      return fmt % (self.ina219_i2c_addr, self.ina219_currentDivider_mA, self.ina219_powerDivider_mW,
-                    self.ina219_calValue)
+      fmt = 'i2c_addr=0x%x, config=0x%x, currentDivider_mA=%d, powerDivider_mW=%d, calValue=%d'
+      return fmt % (self.ina219_i2c_addr, self..ina219_config, self.ina219_currentDivider_mA,
+                     self.ina219_powerDivider_mW, self.ina219_calValue)
 
   def __repr__(self):
       """
