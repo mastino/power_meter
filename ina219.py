@@ -61,10 +61,10 @@ INA219_CONFIG_GAIN_2_80MV              = 0x0800  # Gain 2, 80mV Range
 INA219_CONFIG_GAIN_4_160MV             = 0x1000  # Gain 4, 160mV Range
 INA219_CONFIG_GAIN_8_320MV             = 0x1800  # Gain 8, 320mV Range
 # index of shunt gain config to maximum amperage
-INA219_IDX_GAIN_TO_MILLIAMP = ((INA219_CONFIG_GAIN_1_40MV, 40/INA219_SHUNT_OHM),
-                               (INA219_CONFIG_GAIN_2_80MV, 80/INA219_SHUNT_OHM),
-                               (INA219_CONFIG_GAIN_4_160MV, 160/INA219_SHUNT_OHM),
-                               (INA219_CONFIG_GAIN_8_320MV, 320/INA219_SHUNT_OHM))
+INA219_IDX_GAIN_TO_MILLIAMP = ((INA219_CONFIG_GAIN_1_40MV, 0.040/INA219_SHUNT_OHM),
+                               (INA219_CONFIG_GAIN_2_80MV, 0.080/INA219_SHUNT_OHM),
+                               (INA219_CONFIG_GAIN_4_160MV, 0.160/INA219_SHUNT_OHM),
+                               (INA219_CONFIG_GAIN_8_320MV, 0.320/INA219_SHUNT_OHM))
 
 INA219_CONFIG_BADCRES_MASK             = 0x0780  # Bus ADC Resolution Mask
 INA219_CONFIG_BADCRES_9BIT             = 0x0080  # 9-bit bus res = 0..511
