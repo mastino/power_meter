@@ -269,7 +269,7 @@ class INA219:
           self._configuration(INA219_CONFIG_BVOLTAGERANGE_32V, 1.0, ina219_config_shunt,
                               INA219_CONFIG_MODE_SANDBVOLT_CONTINUOUS)
       elif calibrator == INA219_CALIB_16V_400mA:
-          self._configuration(INA219_CONFIG_BVOLTAGERANGE_32V, 0.4, ina219_config_shunt,
+          self._configuration(INA219_CONFIG_BVOLTAGERANGE_16V, 0.4, ina219_config_shunt,
                               INA219_CONFIG_MODE_SANDBVOLT_CONTINUOUS)
       else:
           raise ValueError
@@ -504,6 +504,8 @@ class INA219:
       for gain_config, max_milliamp in INA219_IDX_GAIN_TO_MILLIAMP:
           if max_milliamp >= expected_max_amp:
               break
+
+      print('gain=0x%x' % gain_config)
 
       # Set the configuration options
       self.ina219_config = (bus_volt_range |
