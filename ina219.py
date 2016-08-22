@@ -504,7 +504,7 @@ class INA219:
       # avoids introducing a bias when truncating the calibration value.
       for lsb in INA219_ROUNDED_LSB:
           if lsb >= self.ina219_current_LSB:
-              self.ina219.current_LSB = lsb
+              self.ina219_current_LSB = lsb
               break
 
       self.ina219_calValue = int(INA219_CURRENT_SCALING / (self.ina219_current_LSB * INA219_SHUNT_OHM))
