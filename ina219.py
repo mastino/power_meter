@@ -505,24 +505,24 @@ class INA219:
       #
       # TODO: the cal constant can be extended to externaly calibrate the ina219
 
-      self.ina219_current_LSB = expected_max_amp / INA219_MAX_ADC_RES
+      self.ina219_current_lsb = expected_max_amp / INA219_MAX_ADC_RES
 
       # round up current_lsb to a divisor of the current scaling value. Since scaling factor is
       # 4096 then lsb must be 2^n to get a divisor. Rounding up the lsb in this manner
       # avoids introducing a bias when truncating the calibration value.
       for lsb in INA219_ROUNDED_LSB:
-          if lsb >= self.ina219_current_LSB:
-              self.ina219_current_LSB = lsb
+          if lsb >= self.ina219_current_lsb:
+              self.ina219_current_lsb = lsb
               break
 
-      self.ina219_calValue = int(INA219_CURRENT_SCALING / (self.ina219_current_LSB * INA219_SHUNT_OHM))
+      self.ina219_calValue = int(INA219_CURRENT_SCALING / (self.ina219_current_lsb * INA219_SHUNT_OHM))
 
       # Current in ampere is obtained from the current register by multiplying by the current_LSB. In turn
       # the power in watts is obtained by mulitplying the power register by power_LSB which is 50 times
       # the current_LSB. The following constants are provided to produce milli-ampere and milliwatt conversion
       # as a divisor in keeping with original code.
-      self.ina219_currentDivider_mA = (1/(self.ina219_current_LSB * 1000))
-      self.ina219_powerDivider_mW = (1/(self.ina219_current_LSB * 1000 * 20))
+      self.ina219_currentDivider_mA = (1/(self.ina219_current_lsb * 1000))
+      self.ina219_powerDivider_mW = (1/(self.ina219_current_lsb * 1000 * 20))
 
       # Actual configuration of the ina219.
       #
