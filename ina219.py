@@ -505,8 +505,6 @@ class INA219:
           if max_milliamp >= expected_max_amp:
               break
 
-      print('gain=0x%x' % gain_config)
-
       # Set the configuration options
       self.ina219_config = (bus_volt_range |
                             gain_config |
