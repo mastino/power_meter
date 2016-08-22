@@ -278,6 +278,33 @@ class INA219:
       self._sampling = samples
       self._write_ina219_config()
 
+  @property
+  def full_scale_amp(self):
+      """
+      Provides the value for full scale (max) ampere based on the configuration
+      :return: float
+      """
+      return float(self.ina219_current_lsb * INA219_MAX_ADC_RES)
+
+  @property
+  def full_scale_watt(self):
+      """
+      Provides the value for full scale (max) watts based on the configuration
+      :return: float
+      """
+      return float(self.ina219_current_lsb * 20 * INA219_MAX_ADC_RES)
+
+  @property
+  def full_scale_volt(self):
+      """
+      Provides the value for full scale (max0 volt based on the configuration
+      :return: int
+      """
+      volt = 32
+      if self._calibrator == INA219_CALIB_16V_400mA:
+          volt = 16
+      return volt
+
   def getBusVoltage_V(self):
       """
       Gets the bus voltage in volts
