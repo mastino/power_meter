@@ -242,7 +242,7 @@ class INA219_Monitor (PowerMonitor):
     Monitors any ina219 device on smbus
     """
 
-    def __init__(self, interval, addr, i2c_device_num, calibrator=ina219.INA219_CALIB_32V_2A):
+    def __init__(self, interval, addr, i2c_device_num, calibrator=ina219.INA219_CALIB_32V_2A, sample=1):
         """
         Runs as a concurrent thread to read from an ina219 device attached to local i2c (SMBus).
         :param callback: method to handle latest power data object
@@ -250,10 +250,11 @@ class INA219_Monitor (PowerMonitor):
         :param addr: int - i2c bus address of ina219 device
         :param i2c_device_num: int - bus number of i2c device ina219 is attached (e.g /dev/i2c-n where n
                                      is i2c_device_num
+        :param number of samples to use for current measurement. See ina219.INA219 for details
         """
         PowerMonitor.__init__(self)
         self._meter = ina219.INA219(addr, i2c_device_num)
-        self._meter.setCalibration(calibrator)
+        self._meter.setCalibration(calibrator,sample)
         self._monitor = False
         self._interval = interval
         self._last_timestamp = None
