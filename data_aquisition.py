@@ -11,13 +11,13 @@ from sys import argv
 def main(pc_output_fh, line_output_fh, interval, duration):
 
     pc_monitor = pm.INA219_Monitor(interval, 0x40, 1, ina219.INA219_CALIB_32V_1A)
-    line_monitor = pm.INA219_Monitor(interval, 0x41, 1, ina219.INA219_CALIB_32V_1A)
+    #line_monitor = pm.INA219_Monitor(interval, 0x41, 1, ina219.INA219_CALIB_32V_1A)
     pc_meter = pm.PowerMeter(pc_monitor)
-    line_meter = pm.PowerMeter(line_monitor)
+    #line_meter = pm.PowerMeter(line_monitor)
 
     start = datetime.datetime.now()
     pc_meter.open()
-    line_meter.open()
+    #line_meter.open()
 
 
     header = ','.join([pm.PowerData.csv_header(), 'wattSeconds'])
@@ -29,30 +29,32 @@ def main(pc_output_fh, line_output_fh, interval, duration):
     mark_time = start_time
     check_time = start_time
     output_delay = datetime.timedelta(seconds=1)
+    pc_power = None
+    line_power = None
 
     while check_time - start < duration:
         try:
             pc_power = pc_meter.next(False)
         except Empty :
             pc_power = None
-        try:
-            line_power = line_meter.next(False)
-        except Empty:
-            line_power = None
+        #try:
+        #    line_power = line_meter.next(False)
+        #except Empty:
+        #    line_power = None
         if pc_power:
             line = ','.join([pc_power.csv(),str(pc_meter._calib_watt_seconds)])
             print(line, file=pc_output_fh)
-        if line_power:
-            line = ','.join([line_power.csv(),str(line_meter._calib_watt_seconds)])
-            print(line, file=line_output_fh)
+        #if line_power:
+        #    line = ','.join([line_power.csv(),str(line_meter._calib_watt_seconds)])
+        #    print(line, file=line_output_fh)
         if check_time - mark_time >= output_delay:
             print('batt', pc_meter._last)
-            print('line', line_meter._last)
+        #    print('line', line_meter._last)
             mark_time = check_time
         check_time = datetime.datetime.now()
 
     pc_meter.close()
-    line_meter.close()
+    #line_meter.close()
 
 if __name__ == '__main__':
 
