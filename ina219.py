@@ -427,7 +427,7 @@ class INA219:
       """
       Gets the raw power value (16-bit signed integer, so +/- 32767. Power
       is computed on ina219 from voltage and current registers. These
-      intermediate values are not computed simultaneous and are separated
+      intermediate values are not computed simultaneously and are separated
       by delays determined from the configuration dependent on bit resolution
       and sampling. However, the timing provided by computing this on the ina219
       device is going to give a more accurate representation of power draw
@@ -518,7 +518,7 @@ class INA219:
       self.ina219_calValue = int(INA219_CURRENT_SCALING / (self.ina219_current_lsb * INA219_SHUNT_OHM))
 
       # Current in ampere is obtained from the current register by multiplying by the current_LSB. In turn
-      # the power in watts is obtained by mulitplying the power register by power_LSB which is 50 times
+      # the power in watts is obtained by mulitplying the power register by power_LSB which is 20 times
       # the current_LSB. The following constants are provided to produce milli-ampere and milliwatt conversion
       # as a divisor in keeping with original code.
       self.ina219_currentDivider_mA = (1/(self.ina219_current_lsb * 1000))
