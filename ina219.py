@@ -29,7 +29,6 @@ Required python modules:
 
 import smbus
 from time import sleep
-from math import trunc
 
 # ina219 shunt resistance
 INA219_SHUNT_OHM = 0.1

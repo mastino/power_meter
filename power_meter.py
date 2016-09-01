@@ -120,7 +120,7 @@ class PowerData:
     def csv_header():
         return "datetime,period,volt,amp,watt"
 
-    def csv(self, calib=True):
+    def csv(self):
         return "\"%s\",%s,%s,%s,%s" % (self._timestamp, self._period.total_seconds() ,self.volt(), self.amp(), self.watt())
 
 
@@ -288,9 +288,13 @@ class INA219_Monitor (PowerMonitor):
         self._monitor = True
 
         while self._monitor:
+
+            # use trigger or interval but not both
             if self.trigger:
                 self.trigger.clear()
                 self.trigger.wait()
+            else:
+                sleep(self._interval)
 
             voltage = self._meter.getBusVoltage_V()
             ampere = self._meter.getCurrent_mA() / 1000
@@ -305,7 +309,6 @@ class INA219_Monitor (PowerMonitor):
                 self._last_timestamp = timestamp
             power_data = PowerData(voltage, ampere, power, timestamp, period)
             self.callback(power_data)
-            sleep(self._interval)
 
         self._meter.close()
 
