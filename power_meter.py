@@ -18,124 +18,110 @@ def output_error_message(msg):
 
 class PowerData:
     """
-
+    Data structure for holding basic power data volts, amps, and watts. Provides a timestamp (datetime.datetime object)
+    and period (datetime.timedelta object). Period is the length of time over which the values apply for the purpose of
+    calculating watt hours.
     """
-    NUM_FIELDS = 7
-    VOLT_IDX = 1
-    AMP_IDX = 3
-    WATT_IDX = 6
-    DEFAULT_VOLT_CALIB = 1.0
-    DEFAULT_AMP_CALIB = 1.0
 
-    def __init__(self, volts, amps, watts, time_stamp, period, volt_calib = DEFAULT_VOLT_CALIB,
-                 amp_calib = DEFAULT_AMP_CALIB):
+    def __init__(self, volts, amps, watts, timestamp, period):
+        """
 
-        self._time_stamp = time_stamp
+        :param volts: float
+        :param amps: float
+        :param watts: float
+        :param time_stamp: datetime.datetime
+        :param period: datetime.timedelta
+        """
+        self._timestamp = timestamp
         self._voltage = volts
         self._ampere = amps
         self._wattage = watts
         self._period = period
-        self._volt_calib = volt_calib
-        self._amp_calib = amp_calib
-
-
-    @classmethod
-    def from_PowerGauge(cls, data_str, time_stamp, period, volt_calib = DEFAULT_VOLT_CALIB,
-                 amp_calib = DEFAULT_AMP_CALIB):
-        """
-
-        :param data_str:
-        :param time_stamp:
-        :param period:
-        :param volt_calib:
-        :param amp_calib:
-        :return:
-        """
-        try:
-            voltage, ampere, wattage = PowerData.parse(data_str)
-        except ValueError as err:
-            msg = 'value error converting power data %s' % str(err)
-            output_error_message(msg)
-            raise err
-        except TypeError as err:
-            msg = 'type error converting power data %s' % str(err)
-            output_error_message(msg)
-            raise err
-        return cls(PowerData(voltage, ampere, wattage, time_stamp, period, volt_calib,
-                             amp_calib))
 
     @property
     def timestamp(self):
-        return self._time_stamp
-
-    @staticmethod
-    def parse(data_str):
         """
-
-        :param data_str: expects a string in the format of 'v: n.n I: nnn mA Watts: n.n'
-        :param timestamp
+        :return: datetime.datetime
         """
-        fields = data_str.split()
-        if len(fields) == PowerData.NUM_FIELDS:
-            voltage = float(fields[PowerData.VOLT_IDX])
-            ampere = float(fields[PowerData.AMP_IDX]) / 1000
-            wattage = float(fields[PowerData.WATT_IDX])
-        else:
-            raise ValueError
+        return self._timestamp
 
-        return voltage, ampere, wattage
-
-    def volt(self, calib=True):
+    @property
+    def volt(self):
         """
-        :param calib
-        :return:
+        :return: float
         """
-        voltage = self._voltage
-        if calib:
-            voltage *= self._volt_calib
-        return voltage
+        return self._voltage
 
-
-    def amp(self, calib=True):
+    @property
+    def milli_volt(self):
         """
-        :param calib
-        :return:
+        :return: float
         """
-        ampere = self._ampere
-        if calib:
-            ampere *= self._amp_calib
-        return ampere
+        return self._voltage * 1000
 
-
-    def watt(self, calib=True):
+    @property
+    def amp(self):
         """
-
-        :param calib:
-        :return:
+        :return: float
         """
-        wattage = self._wattage
-        if calib:
-            wattage = self.volt(True) * self.amp(True)
-        return wattage
+        return self._ampere
+
+    @property
+    def milli_amp(self):
+        """
+        :return: float
+        """
+        return self._ampere * 1000
+
+    @property
+    def watt(self):
+        """
+        :return: float
+        """
+        return self._wattage
+
+    @property
+    def milli_watt(self):
+        """
+        :return: float
+        """
+        return self._wattage * 1000
+
+    @property
+    def watt_seconds(self):
+        """
+        :return: float
+        """
+        return self._wattage * self._period.total_seconds()
+
+    @property
+    def watt_hours(self):
+        """
+        :return: float
+        """
+        return self.watt_seconds / 3600
+
 
     def __repr__(self):
         """
-        :return: string suitable for input argument of PowerData class
+        :return: string unsuitable for input arguments of PowerData class
         """
-        return 'V: %f I: %f Watts: %f' % (self._voltage, self._ampere, self._wattage)
+        return 'PowerData(%f, %f, %f, %s, %f)' % (self._voltage, self._ampere, self._wattage, self._timestamp,
+                                                  self._period.total_seconds())
 
     def __str__(self):
         """
         :return: string representation which include the time data was aquired
         """
-        return '%s %s' % (str(self._time_stamp), self.__repr__())
+        return '%s volt:%f amp:%f watt:%f period:%f' % (self._timestamp, self._voltage, self._ampere, self._wattage,
+                                                        self._period.total_seconds())
 
     @staticmethod
     def csv_header():
         return "datetime,period,volt,amp,watt"
 
     def csv(self, calib=True):
-        return "\"%s\",%s,%s,%s,%s" % (self._time_stamp, self._period.total_seconds() ,self.volt(), self.amp(), self.watt())
+        return "\"%s\",%s,%s,%s,%s" % (self._timestamp, self._period.total_seconds() ,self.volt(), self.amp(), self.watt())
 
 
 class PowerMonitor (Thread):
@@ -145,23 +131,32 @@ class PowerMonitor (Thread):
 
     def __init__(self):
         """
-        Function called with new powerdata object
-        :param callback:
-        :return:
+        :param callback function called with a new PowerData object
+        :param trigger threading.Event object. Use is optional, if present the monitor must wait on this event object
+               to synchronize power reads.
         """
         Thread.__init__(self)
         self.callback = None
+        self.trigger = None
 
     def close(self):
         """
-        Take actions necessary to shutdown the montior and force run() to terminate
+        Take actions necessary to shutdown the monitor and force run() to terminate
         """
         pass
 
 class PowerGage_Monitor (PowerMonitor):
     """
-    Monitors Adafruit PowerGuage on serial port
+    Monitors Adafruit PowerGuage on serial port. Since the PowerGage generates data at roughly 1 second intervals
+    without any mechanism to control this, the trigger Event object is ignored when present. Callback is made
+    with a PowerData object at each receipt of valid data from the PowerGage.
     """
+
+    # Constants for parsing adafruit PowerGauge serial data
+    NUM_FIELDS = 7
+    VOLT_IDX = 1
+    AMP_IDX = 3
+    WATT_IDX = 6
 
     def __init__(self, port='/dev/ttyAMA0', baud=9600, timeout=2.0):
         PowerMonitor.__init__(self)
@@ -178,6 +173,24 @@ class PowerGage_Monitor (PowerMonitor):
         Sets flag to exit monitoring loop, close serial connection and terminate
         """
         self._monitor = False
+
+    @staticmethod
+    def parse(data_str):
+        """
+        Parses one line of serial stream from the PowerGage.
+        :param data_str: expects a string in the format of 'v: n.n I: nnn mA Watts: n.n'
+        :param timestamp
+        """
+        fields = data_str.split()
+        if len(fields) == PowerGage_Monitor.NUM_FIELDS:
+            voltage = float(fields[PowerGage_Monitor.VOLT_IDX])
+            ampere = float(fields[PowerGage_Monitor.AMP_IDX]) / 1000
+            wattage = float(fields[PowerGage_Monitor.WATT_IDX])
+        else:
+            raise ValueError
+
+        return voltage, ampere, wattage
+
 
     def run(self):
         """
@@ -216,7 +229,8 @@ class PowerGage_Monitor (PowerMonitor):
 
             if data_str:
                 try:
-                    power_data = PowerData.from_PowerGauge(data_str, None, None, None, None)
+                    voltage, amperage, wattage = PowerGage_Monitor.parse(data_str)
+                    power_data = PowerData(voltage, amperage, wattage, None, None)
                 except:
                     power_data = None
 
@@ -245,7 +259,6 @@ class INA219_Monitor (PowerMonitor):
     def __init__(self, interval, addr, i2c_device_num, calibrator=ina219.INA219_CALIB_32V_2A, sample=1):
         """
         Runs as a concurrent thread to read from an ina219 device attached to local i2c (SMBus).
-        :param callback: method to handle latest power data object
         :param interval: float in seconds. Read interval for ina219
         :param addr: int - i2c bus address of ina219 device
         :param i2c_device_num: int - bus number of i2c device ina219 is attached (e.g /dev/i2c-n where n
@@ -275,6 +288,9 @@ class INA219_Monitor (PowerMonitor):
         self._monitor = True
 
         while self._monitor:
+            if self.trigger:
+                self.trigger.clear()
+                self.trigger.wait()
 
             voltage = self._meter.getBusVoltage_V()
             ampere = self._meter.getCurrent_mA() / 1000
@@ -287,7 +303,7 @@ class INA219_Monitor (PowerMonitor):
             else:
                 period = datetime.timedelta()
                 self._last_timestamp = timestamp
-            power_data = PowerData(voltage, ampere, power, timestamp, period, None, None)
+            power_data = PowerData(voltage, ampere, power, timestamp, period)
             self.callback(power_data)
             sleep(self._interval)
 
@@ -297,113 +313,88 @@ class PowerMeter:
     """
 
     """
-    def __init__(self, monitor):
+    def __init__(self, monitor, trigger=None):
         """
-        :param monitor
+        :param monitor PowerMonitor derived object
+        :param trigger threading.Event object providing external synchronization of PowerMonitor object(s)
         """
         self._debug = False
 
         self._monitor = monitor
         self._monitor.callback = self._update
-
-        self._volt_calib = 1.0       # vector of calibration values for voltage
-        self._amp_calib = 1.0        # vector of calibration values for amperage
-
-        self._epoch = None             # timestamp (time.datetime) for start of monitoring
+        self._monitor.trigger = trigger
+        self._epoch = None             # timestamp (datetime.datetime) for start of monitoring
         self._last = None              # most recent power values received on ttl
-        self._avg_period = None        # period (time span in time.deltatime) of power values
-        self._queue = Queue.Queue(maxsize=10)
+        self._avg_period = None        # period (time span in datetime.timedelta) of power values
+        self._maxsize = 10             # maximum size for PowerData queue
+        self._queue = Queue.Queue(maxsize=self._maxsize)
 
         self._watt_seconds = 0.0
-        self._calib_watt_seconds = 0.0
 
-
-    def volt(self, calib=True):
+    @property
+    def volt(self):
         """
-        :param calib
-        :return:
+        :return: float
         """
-        return self._last.volt(calib)
+        return self._last.volt
 
-
-    def amp(self, calib=True):
+    @property
+    def amp(self):
         """
-        :param calib
-        :return:
+        :return: float
         """
-        return self._last.amp(calib)
+        return self._last.amp
 
-
-    def watt(self, calib=True):
+    @property
+    def watt(self):
         """
-
-        :param calib:
-        :return:
+        :return: float
         """
-        # TODO add ability to override calibration for ina219 devices
-        # TODO which provide their own calibration mechanism
-        return self._last.watt(False)
+        return self._last.watt
 
+    @property
+    def watt_seconds(self):
+        """
+        Watt seconds of power consumption since epoch
+        :return: float
+        """
+        return self._watt_seconds
+
+    @property
+    def watt_hours(self):
+        """
+        Watt hours of power consumption since epoch
+        :return: float
+        """
+        return self._watt_seconds / 3600
 
     def next(self, block=True):
         """
-
-        :param block
-        :return:
+        Returns the next PowerData object from the queue.
+        :param block True/False blocks if PowerData queue is empty
+        :return: PowerData object
         """
         return self._queue.get(block)
 
 
-    def get_current(self):
+    def get(self):
         """
-
-        :return:
+        The most recent PowerData object
+        :return: PowerData object
         """
         return copy.deepcopy(self._last)
 
-    def calibrate(self, volt_calib, amp_calib):
-        """
-        Set calibration vectors for voltage and amperage.
-        :param volt_calib: tuple containing single constant
-        :param amp_calib: tuple containing single constant
-        """
-
-        msg = 'oops'
-        error = False
-        if not (isinstance(volt_calib, tuple) and isinstance(amp_calib, tuple)):
-            msg = 'expected tuple'
-            error = True
-        if (not error) and len(volt_calib) != 1:
-            msg = 'expected single constant for volt calibrator'
-            error = True
-        if (not error) and len(amp_calib) != 1:
-            msg = 'expected single constant for amp calibrator'
-            error = True
-        if (not error) and 0 < volt_calib[0]:
-            msg = 'voltage const %d is zero or negative' % volt_calib[0]
-            error = True
-        if (not error) and 0 < amp_calib[0]:
-            msg = 'amperage const %d is zero or negative' % amp_calib[0]
-            error = True
-        if not error:
-            self._volt_calib = volt_calib
-            self._amp_calib = amp_calib
-        else:
-            output_error_message(msg)
-            raise ValueError
 
     def open(self):
         """
-
-
+        Start power monitoring
         """
         self._epoch = datetime.datetime.now()
         self._monitor.start()
 
     def close(self):
         """
-
-
+        Stop power monitoring and close resources
         """
 
         if self._monitor:
@@ -424,14 +415,9 @@ class PowerMeter:
                 period = power_data.timestamp - self._epoch
                 self._avg_period = period.total_seconds()
 
-            # update with calibration information
-            power_data._volt_calib = self._volt_calib
-            power_data._amp_calib = self._amp_calib
-
             # update data structures
             self._last = copy.deepcopy(power_data)
             self._watt_seconds += self._last.watt(False) * self._last._period.total_seconds()
-            self._calib_watt_seconds += self._last.watt(True) * self._last._period.total_seconds()
 
             if self._queue.full():
                 self._queue.get(False)
