@@ -23,8 +23,9 @@ class PowerCenter():
     """
 
     CHARGING    = 0
-    ON_BATTERY  = 1
-    LOW_BATTERY = 2
+    FULL_CHARGE = 1
+    ON_BATTERY  = 2
+    LOW_BATTERY = 3
     LOW_BATTERY_VOLTS = 3.2
 
     LOG_FILE = "/var/log/power_center.log"
@@ -75,7 +76,7 @@ class PowerCenter():
 
     def wait(self):
         """
-        Provides a an event calling process can wait on until termination of PowerCenter
+        Provides an event that a calling process can wait on until termination of PowerCenter
         """
         self._close_event.wait()
 
@@ -115,19 +116,25 @@ class PowerCenter():
         """
         Checks battery voltage and amperage updating LED indication if there is a change
         CHARGING := negative battery amperage
+        FULL_CHARGE := positive battery amperage with greater external amperage
         ON_BATTERY := positive battery amperage
         LOW_BATTERY := battery voltage <= LOW_BATTERY_VOLTS
         """
         amperage = self.battery_power.amp
         voltage = self.battery_power.volt
+        ext_amperage = self.dyno_power.amp
 
         if voltage <= PowerCenter.LOW_BATTERY_VOLTS:
             if self.battery_status != PowerCenter.LOW_BATTERY:
                 self.battery_status = PowerCenter.LOW_BATTERY
                 self.battery_status_led.red()
-        elif amperage > 0:
+        elif amperage < 0:
             if self.battery_status != PowerCenter.CHARGING:
                 self.battery_status = PowerCenter.CHARGING
+                self.battery_status_led.green(True)
+        elif ext_amperage > amperage:
+            if self.battery_status != PowerCenter.FULL_CHARGE:
+                self.batter_status = PowerCenter.FULL_CHARGE
                 self.battery_status_led.green()
         else:
             if self.battery_status != PowerCenter.ON_BATTERY:
