@@ -42,6 +42,8 @@ class PowerCenter():
         Instantiates power center which for now just monitors battery and external power ina219 devices.
         """
         self._trigger = Event().clear()
+        self._close_event = Event().clear()
+        self._state = None
         self.battery_power = pm.PowerMeter(pm.INA219_Monitor(0.1, 0x40, 1, ina219.INA219_CALIB_32V_1A, 128),
                                            self._trigger)
         self.dyno_power = pm.PowerMeter(pm.INA219_Monitor(0.1, 0x41, 1, ina219.INA219_CALIB_32V_2A, 128),
@@ -53,7 +55,11 @@ class PowerCenter():
         self._battery_timer = Timer(PowerCenter.CHECK_BATTERY_INTERVAL, self._check_battery)
         self._log_timer = Timer(PowerCenter.LOG_DATA_INTERVAL, self._output_log)
         self._power_monitor_timer = Timer(PowerCenter.POWER_MONITOR_INTERVAL, self._power_monitor_sync)
-        self._state = None
+
+        signal.signal(signal.SIGTERM, self._sig_handler)
+        signal.signal(signal.SIGINT, self._sig_handler)
+        signal.signal(signal.SIGUSR1, self._sig_handler)
+
 
     def run(self):
         """
@@ -66,6 +72,12 @@ class PowerCenter():
         self._battery_timer.start()
         if self.log_fh:
             self._log_timer.start()
+
+    def wait(self):
+        """
+        Provides a an event calling process can wait on until termination of PowerCenter
+        """
+        self._close_event.wait()
 
     def close(self):
         """
@@ -85,7 +97,7 @@ class PowerCenter():
 
     def _power_monitor_sync(self):
         """
-        Sets event controlling syncronization of power monitors
+        Sets event controlling synchronization of power monitors
         """
         self._trigger.set()
         if self._state == PowerCenter.RUNNING:
@@ -156,7 +168,7 @@ class PowerCenter():
         """
         if signum in [signal.SIGTERM, signal.SIGINT]:
             self.close()
-            exit()
+            self._close_event.set()
 
         if signum == signal.SIGUSR1:
             if self.log_fh:
@@ -174,3 +186,13 @@ class PowerCenter():
                 self._log_message('Logging enabled')
 
 
+def main():
+    """
+    Instantiates PowerCenter and waits for termination
+    """
+    pc = PowerCenter()
+    pc.run()
+    pc.wait()
+
+if __name__ == "__main__":
+    main()
