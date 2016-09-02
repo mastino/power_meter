@@ -13,8 +13,7 @@ import signal
 import ina219
 import power_meter as pm
 import rgb
-from threading import Event
-from threading import Timer
+from threading import Event, Timer
 from datetime import datetime
 
 class PowerCenter():
@@ -23,27 +22,59 @@ class PowerCenter():
     power consumption.
     """
 
+    CHARGING    = 0
+    ON_BATTERY  = 1
+    LOW_BATTERY = 2
+    LOW_BATTERY_VOLTS = 3.2
+
+    LOG_FILE = "/var/log/power_center.log"
+    POWER_MONITOR_INTERVAL = 0.08
+    RUNNING = 0
+    SHUTDOWN = 1
+
+    # timer intervals
+    CHECK_BATTERY_INTERVAL = 1.0
+    LOG_DATA_INTERVAL = 1.0
+
+
     def __init__(self):
         """
         Instantiates power center which for now just monitors battery and external power ina219 devices.
         """
-        self.trigger = Event().clear()
+        self._trigger = Event().clear()
         self.battery_power = pm.PowerMeter(pm.INA219_Monitor(0.1, 0x40, 1, ina219.INA219_CALIB_32V_1A, 128),
-                                           self.trigger)
+                                           self._trigger)
         self.dyno_power = pm.PowerMeter(pm.INA219_Monitor(0.1, 0x41, 1, ina219.INA219_CALIB_32V_2A, 128),
-                                        self.trigger)
-        self.log_file = '/var/log/power_center.log'
+                                        self._trigger)
+        self.log_file = PowerCenter.LOG_FILE
         self.log_fh = None
-        self.battery_status = rgb.RGB_led(21, 20, 16)
-
+        self.battery_status = None
+        self.battery_status_led = rgb.RGB_led(21, 20, 16)
+        self._battery_timer = Timer(PowerCenter.CHECK_BATTERY_INTERVAL, self._check_battery)
+        self._log_timer = Timer(PowerCenter.LOG_DATA_INTERVAL, self._output_log)
+        self._power_monitor_timer = Timer(PowerCenter.POWER_MONITOR_INTERVAL, self._power_monitor_sync)
+        self._state = None
 
     def run(self):
-
+        """
+        Starts things up and launches timers
+        """
+        self._state = PowerCenter.RUNNING
+        self.battery_power.open()
+        self.dyno_power.open()
+        self._power_monitor_timer.start()
+        self._battery_timer.start()
+        if self.log_fh:
+            self._log_timer.start()
 
     def close(self):
         """
-        Shuts down power_center
+        Shuts things down and cancels timers
         """
+        self._status = PowerCenter.SHUTDOWN
+        self._power_monitor_timer.cancel()
+        self._log_timer.cancel()
+        self._battery_timer.cancel()
         self.battery_power.close()
         self.dyno_power.close()
         self.battery_status.close()
@@ -51,7 +82,53 @@ class PowerCenter():
             self._log_message('Shutting down Power Center')
             self.log_fh.flush()
             self.log_fh.close()
-        exit()
+
+    def _power_monitor_sync(self):
+        """
+        Sets event controlling syncronization of power monitors
+        """
+        self._trigger.set()
+        if self._state == PowerCenter.RUNNING:
+            self._power_monitor_timer.start()
+
+    def _check_battery(self):
+        """
+        Runs battery check and then relaunches timer
+        """
+        self._update_battery_status()
+        if self._state == PowerCenter.RUNNING:
+            self._battery_timer.start()
+
+    def _update_battery_status(self):
+        """
+        Checks battery voltage and amperage updating LED indication if there is a change
+        CHARGING := negative battery amperage
+        ON_BATTERY := positive battery amperage
+        LOW_BATTERY := battery voltage <= LOW_BATTERY_VOLTS
+        """
+        amperage = self.battery_power.amp
+        voltage = self.battery_power.volt
+
+        if voltage <= PowerCenter.LOW_BATTERY_VOLTS:
+            if self.battery_status != PowerCenter.LOW_BATTERY:
+                self.battery_status = PowerCenter.LOW_BATTERY
+                self.battery_status_led.red()
+        elif amperage > 0:
+            if self.battery_status != PowerCenter.CHARGING:
+                self.battery_status = PowerCenter.CHARGING
+                self.battery_status_led.green()
+        else:
+            if self.battery_status != PowerCenter.ON_BATTERY:
+                self.battery_status = PowerCenter.ON_BATTERY
+                self.battery_status_led.blue()
+
+    def _output_log(self):
+        """
+        Updates logs and relaunches timer
+        """
+        self._log_power_data()
+        if self._state == PowerCenter.RUNNING:
+            self._log_timer.start()
 
     def _log_power_data(self):
         """
@@ -79,6 +156,7 @@ class PowerCenter():
         """
         if signum in [signal.SIGTERM, signal.SIGINT]:
             self.close()
+            exit()
 
         if signum == signal.SIGUSR1:
             if self.log_fh:
