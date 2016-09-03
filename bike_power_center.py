@@ -102,7 +102,7 @@ class PowerCenter():
         """
         self._trigger.set()
         if self._state == PowerCenter.RUNNING:
-            self._power_monitor_timer.start()
+            self._power_monitor_timer = Timer(PowerCenter.POWER_MONITOR_INTERVAL, self._power_monitor_sync).start()
 
     def _check_battery(self):
         """
@@ -110,7 +110,7 @@ class PowerCenter():
         """
         self._update_battery_status()
         if self._state == PowerCenter.RUNNING:
-            self._battery_timer.start()
+            self._battery_timer = Timer(PowerCenter.CHECK_BATTERY_INTERVAL, self._check_battery).start()
 
     def _update_battery_status(self):
         """
@@ -147,7 +147,7 @@ class PowerCenter():
         """
         self._log_power_data()
         if self._state == PowerCenter.RUNNING:
-            self._log_timer.start()
+            self._log_timer = Timer(PowerCenter.LOG_DATA_INTERVAL, self._output_log).start()
 
     def _log_power_data(self):
         """
