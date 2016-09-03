@@ -164,7 +164,7 @@ class PowerCenter():
         :param message: string
         """
         if self.log_fh:
-            print('%s message' % datetime.now(), file=self.log_fh)
+            print('%s %s' % (datetime.now(), message), file=self.log_fh)
 
     def _sig_handler(self, signum, frame):
         """
