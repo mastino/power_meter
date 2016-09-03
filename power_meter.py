@@ -420,7 +420,7 @@ class PowerMeter:
 
             # update data structures
             self._last = copy.deepcopy(power_data)
-            self._watt_seconds += self._last.watt(False) * self._last._period.total_seconds()
+            self._watt_seconds += self._last.watt * self._last._period.total_seconds()
 
             if self._queue.full():
                 self._queue.get(False)
