@@ -42,8 +42,8 @@ class PowerCenter():
         """
         Instantiates power center which for now just monitors battery and external power ina219 devices.
         """
-        self._trigger = Event().clear()
-        self._close_event = Event().clear()
+        self._trigger = Event()
+        self._close_event = Event()
         self._state = None
         self.battery_power = pm.PowerMeter(pm.INA219_Monitor(0.1, 0x40, 1, ina219.INA219_CALIB_32V_1A, 128),
                                            self._trigger)
