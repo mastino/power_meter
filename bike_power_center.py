@@ -37,7 +37,6 @@ class PowerCenter():
     CHECK_BATTERY_INTERVAL = 1.0
     LOG_DATA_INTERVAL = 1.0
 
-
     def __init__(self):
         """
         Instantiates power center which for now just monitors battery and external power ina219 devices.
@@ -54,13 +53,12 @@ class PowerCenter():
         self.battery_status = None
         self.battery_status_led = rgb.RGB_led(21, 20, 16)
         self._battery_timer = Timer(PowerCenter.CHECK_BATTERY_INTERVAL, self._check_battery)
-        self._log_timer = Timer(PowerCenter.LOG_DATA_INTERVAL, self._output_log)
+        self._log_timer = None
         self._power_monitor_timer = Timer(PowerCenter.POWER_MONITOR_INTERVAL, self._power_monitor_sync)
 
         signal.signal(signal.SIGTERM, self._sig_handler)
         signal.signal(signal.SIGINT, self._sig_handler)
         signal.signal(signal.SIGUSR1, self._sig_handler)
-
 
     def run(self):
         """
@@ -72,6 +70,7 @@ class PowerCenter():
         self._power_monitor_timer.start()
         self._battery_timer.start()
         if self.log_fh:
+            self._log_timer = Timer(PowerCenter.LOG_DATA_INTERVAL, self._output_log)
             self._log_timer.start()
 
     def wait(self):
@@ -85,9 +84,12 @@ class PowerCenter():
         Shuts things down and cancels timers
         """
         self._status = PowerCenter.SHUTDOWN
-        self._power_monitor_timer.cancel()
-        self._log_timer.cancel()
-        self._battery_timer.cancel()
+        if self._power_monitor_timer:
+            self._power_monitor_timer.cancel()
+        if self._log_timer:
+            self._log_timer.cancel()
+        if self._battery_timer:
+            self._battery_timer.cancel()
         self.battery_power.close()
         self.dyno_power.close()
         self.battery_status.close()
@@ -193,6 +195,7 @@ class PowerCenter():
                     print('Failed to open %s for logging: %s' % (self.log_file, sys.exc_info()[0]), sys.stderr)
                     self.log_fh = None
                     return
+                self._log_timer = Timer(PowerCenter.LOG_DATA_INTERVAL, self._output_log)
                 self._log_message('Logging enabled')
 
 
