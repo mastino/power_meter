@@ -32,6 +32,7 @@ class PowerCenter():
     POWER_MONITOR_INTERVAL = 0.08
     RUNNING = 0
     SHUTDOWN = 1
+    TERMINATE = 2
 
     # timer intervals
     CHECK_BATTERY_INTERVAL = 1.0
@@ -42,7 +43,6 @@ class PowerCenter():
         Instantiates power center which for now just monitors battery and external power ina219 devices.
         """
         self._trigger = Event()
-        self._close_event = Event()
         self._state = None
         self.battery_power = pm.PowerMeter(pm.INA219_Monitor(0.1, 0x40, 1, ina219.INA219_CALIB_32V_1A, 128),
                                            self._trigger)
@@ -73,15 +73,13 @@ class PowerCenter():
             self._log_timer = Timer(PowerCenter.LOG_DATA_INTERVAL, self._output_log)
             self._log_timer.start()
 
-    def wait(self):
-        """
-        Provides an event that a calling process can wait on until termination of PowerCenter
-        """
-        self._close_event.wait()
+        while self._state != PowerCenter.TERMINATE:
+            errno = signal.pause()
+
 
     def close(self):
         """
-        Shuts things down and cancels timers
+        Shuts things down and cancels timers. Set status flag to TERMINATE
         """
         self._status = PowerCenter.SHUTDOWN
         if self._power_monitor_timer:
@@ -96,6 +94,7 @@ class PowerCenter():
             self._log_message('Shutting down Power Center')
             self.log_fh.flush()
             self.log_fh.close()
+        self._status = PowerCenter.TERMINATE
 
     def _power_monitor_sync(self):
         """
@@ -179,9 +178,8 @@ class PowerCenter():
         """
         if signum in [signal.SIGTERM, signal.SIGINT]:
             self.close()
-            self._close_event.set()
 
-        if signum == signal.SIGUSR1:
+        elif signum == signal.SIGUSR1:
             if self.log_fh:
                 self._log_message('Logging disabled')
                 self.log_fh.flush()
@@ -205,7 +203,6 @@ def main():
     """
     pc = PowerCenter()
     pc.run()
-    pc.wait()
 
 if __name__ == "__main__":
     main()
