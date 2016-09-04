@@ -92,7 +92,6 @@ class PowerCenter():
             self._battery_timer.cancel()
         self.battery_power.close()
         self.dyno_power.close()
-        self.battery_status.close()
         if self.log_fh:
             self._log_message('Shutting down Power Center')
             self.log_fh.flush()
