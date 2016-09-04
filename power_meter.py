@@ -121,7 +121,8 @@ class PowerData:
         return "datetime,period,volt,amp,watt"
 
     def csv(self):
-        return "\"%s\",%s,%s,%s,%s" % (self._timestamp, self._period.total_seconds() ,self.volt(), self.amp(), self.watt())
+        return "\"%s\",%s,%s,%s,%s" % (self._timestamp, self._period.total_seconds() ,self.volt, self.amp,
+                                       self.watt)
 
 
 class PowerMonitor (Thread):
