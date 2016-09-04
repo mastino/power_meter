@@ -138,7 +138,7 @@ class PowerCenter():
                 self.battery_status_led.green(True)
         elif ext_amperage > amperage:
             if self.battery_status != PowerCenter.FULL_CHARGE:
-                self.batter_status = PowerCenter.FULL_CHARGE
+                self.battery_status = PowerCenter.FULL_CHARGE
                 self.battery_status_led.green()
         else:
             if self.battery_status != PowerCenter.ON_BATTERY:
