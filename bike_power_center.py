@@ -196,6 +196,7 @@ class PowerCenter():
                     self.log_fh = None
                     return
                 self._log_timer = Timer(PowerCenter.LOG_DATA_INTERVAL, self._output_log)
+                self._log_timer.start()
                 self._log_message('Logging enabled')
 
 
