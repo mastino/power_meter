@@ -183,6 +183,8 @@ class PowerCenter():
         :param frame:
         """
         if signum in [signal.SIGTERM, signal.SIGINT]:
+            if self._debug:
+                self._log_message('Received signal %d' % signum)
             self.close()
 
         elif signum == signal.SIGUSR1:
