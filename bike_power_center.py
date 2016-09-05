@@ -101,7 +101,7 @@ class PowerCenter():
                 self._log_message('Canceling battery timer')
             self._battery_timer.cancel()
         if self._debug:
-            self._log_message('Closing batter power meter')
+            self._log_message('Closing battery power meter')
         self.battery_power.close()
         if self._debug:
             self._log_message('Closing dyno power meter')
