@@ -78,7 +78,7 @@ class PowerCenter():
         while self._state != PowerCenter.TERMINATE:
             result = signal.pause()
             if self._debug:
-                print('Caught Interrupt', file=sys.stderr)
+                self._log_message('Caught Interrupt')
 
 
     def close(self):
@@ -98,7 +98,7 @@ class PowerCenter():
             self._log_message('Shutting down Power Center')
             self.log_fh.flush()
             self.log_fh.close()
-        self._status = PowerCenter.TERMINATE
+        self._state = PowerCenter.TERMINATE
 
     def _power_monitor_sync(self):
         """
@@ -172,6 +172,8 @@ class PowerCenter():
         """
         if self.log_fh:
             print('%s %s' % (datetime.now(), message), file=self.log_fh)
+        if self._debug:
+            print('%s %s' % (datetime.now(), message), file=sys.stderr)
 
     def _sig_handler(self, signum, frame):
         """
