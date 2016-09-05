@@ -29,7 +29,6 @@ class PowerCenter():
     LOW_BATTERY_VOLTS = 3.2
 
     LOG_FILE = "/var/log/power_center.log"
-    POWER_MONITOR_INTERVAL = 0.08
     RUNNING = 0
     SHUTDOWN = 1
     TERMINATE = 2
@@ -37,6 +36,9 @@ class PowerCenter():
     # timer intervals
     CHECK_BATTERY_INTERVAL = 1.0
     LOG_DATA_INTERVAL = 1.0
+    POWER_MONITOR_INTERVAL = 0.08
+
+    DEBUG = True
 
     def __init__(self):
         """
@@ -55,7 +57,7 @@ class PowerCenter():
         self._battery_timer = Timer(PowerCenter.CHECK_BATTERY_INTERVAL, self._check_battery)
         self._log_timer = None
         self._power_monitor_timer = Timer(PowerCenter.POWER_MONITOR_INTERVAL, self._power_monitor_sync)
-
+        self._debug = PowerCenter.DEBUG
         signal.signal(signal.SIGTERM, self._sig_handler)
         signal.signal(signal.SIGINT, self._sig_handler)
         signal.signal(signal.SIGUSR1, self._sig_handler)
@@ -74,7 +76,9 @@ class PowerCenter():
             self._log_timer.start()
 
         while self._state != PowerCenter.TERMINATE:
-            errno = signal.pause()
+            result = signal.pause()
+            if self._debug:
+                print('Caught Interrupt', file=sys.stderr)
 
 
     def close(self):
