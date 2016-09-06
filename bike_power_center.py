@@ -38,7 +38,7 @@ class PowerCenter():
     LOG_DATA_INTERVAL = 1.0
     POWER_MONITOR_INTERVAL = 0.08
 
-    DEBUG = True
+    DEBUG = False
 
     def __init__(self):
         """
