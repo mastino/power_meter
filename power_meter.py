@@ -410,7 +410,6 @@ class PowerMeter:
 
         if self._monitor:
             self._monitor.close()
-            print('Waiting for monitor to exit', file=stderr)
             self._monitor.join()
             self._monitor = None
 

@@ -197,8 +197,11 @@ class PowerCenter():
         """
         if self.log_fh:
             battery_data = self.battery_power.get()
+            battery_watt_seconds = self.battery_power.watt_seconds
             dyno_data = self.dyno_power.get()
-            self._log_message(battery_data.csv() + ',' + dyno_data.csv())
+            dyno_watt_seconds = self.dyno_power.watt_seconds
+            message = ',%s,%f,%s,%f' % (battery_data.csv(), battery_watt_seconds, dyno_data.csv(), dyno_watt_seconds)
+            self._log_message(message)
 
     def _log_message(self, message):
         """
