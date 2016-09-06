@@ -106,11 +106,18 @@ class PowerCenter():
 
         # shutdown power monitors
         if self._debug:
-            self._log_message('Closing battery power meter')
+            self._log_message('Stopping battery power meter')
+        self.battery_power.stop()
+        if self._debug:
+            self._log_message('Stopping dyno power meter')
+        self.dyno_power.stop()
+        self._trigger.set()
         self.battery_power.close()
         if self._debug:
-            self._log_message('Closing dyno power meter')
+            self._log_message('Battery power meter closed')
         self.dyno_power.close()
+        if self._debug:
+            self._log_message('Dyno power meter closed')
 
         # shutdown LED(s)
         if self.battery_status_led:

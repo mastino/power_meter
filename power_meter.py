@@ -282,7 +282,6 @@ class INA219_Monitor (PowerMonitor):
     def run(self):
         """
         Sets calibration of ina219 and starts monitoring
-        :return:
         """
 
         self._meter.begin()
@@ -395,6 +394,14 @@ class PowerMeter:
         """
         self._epoch = datetime.datetime.now()
         self._monitor.start()
+
+    def stop(self):
+        """
+        Calls close on monitor without joining the the thread. Necessary when using external synchronization
+        and need to notify monitor to discontinue processing on receiving last event.
+        """
+        if self._monitor:
+            self._monitor.close()
 
     def close(self):
         """
