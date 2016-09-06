@@ -128,6 +128,7 @@ class PowerCenter():
             self._log_message('Shutting down Power Center')
             self.log_fh.flush()
             self.log_fh.close()
+            self.log_fh = None
 
         # set state
         if self._debug:
