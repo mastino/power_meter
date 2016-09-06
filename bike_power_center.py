@@ -85,9 +85,12 @@ class PowerCenter():
         """
         Shuts things down and cancels timers. Set status flag to TERMINATE
         """
+        # set state
         if self._debug:
             self._log_message('Setting state to SHUTDOWN')
         self._status = PowerCenter.SHUTDOWN
+
+        # shutdown timers
         if self._power_monitor_timer:
             if self._debug:
                 self._log_message('Canceling power monitor timer')
@@ -100,16 +103,26 @@ class PowerCenter():
             if self._debug:
                 self._log_message('Canceling battery timer')
             self._battery_timer.cancel()
+
+        # shutdown power monitors
         if self._debug:
             self._log_message('Closing battery power meter')
         self.battery_power.close()
         if self._debug:
             self._log_message('Closing dyno power meter')
         self.dyno_power.close()
+
+        # shutdown LED(s)
+        if self.battery_status_led:
+            self.battery_status_led.close()
+
+        # shutdown logging
         if self.log_fh:
             self._log_message('Shutting down Power Center')
             self.log_fh.flush()
             self.log_fh.close()
+
+        # set state
         if self._debug:
             self._log_message('Setting state to TERMINATE')
         self._state = PowerCenter.TERMINATE
