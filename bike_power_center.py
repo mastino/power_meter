@@ -15,6 +15,7 @@ import power_meter as pm
 import rgb
 from threading import Event, Timer
 from datetime import datetime
+import smbus
 
 class PowerCenter():
     """
@@ -40,6 +41,11 @@ class PowerCenter():
 
     DEBUG = False
 
+    # avr constants
+    AVR_I2C_BUS = 1
+    AVR_I2C_ADDRESS = 0x21
+    AVR_BATT_CHRG_REG = 23
+
     def __init__(self):
         """
         Instantiates power center which for now just monitors battery and external power ina219 devices.
@@ -58,6 +64,8 @@ class PowerCenter():
         self._log_timer = None
         self._power_monitor_timer = Timer(PowerCenter.POWER_MONITOR_INTERVAL, self._power_monitor_sync)
         self._debug = PowerCenter.DEBUG
+        self._i2c_bus = smbus.SMBus(PowerCenter.AVR_I2C_BUS)
+
         signal.signal(signal.SIGTERM, self._sig_handler)
         signal.signal(signal.SIGINT, self._sig_handler)
         signal.signal(signal.SIGUSR1, self._sig_handler)
@@ -134,6 +142,25 @@ class PowerCenter():
         if self._debug:
             self._log_message('Setting state to TERMINATE')
         self._state = PowerCenter.TERMINATE
+
+    def set_charge_rate(self, rate):
+        """
+        Sets the charge rate on the AndiceLabs PowerPi
+        :param rate: one of {0,1,2,3}
+                     0 := charging disabled
+                     1 := 1/3 amp
+                     2 := 2/3 amp
+                     3 := 1 amp
+        """
+        if rate in [0, 1, 2, 3]:
+            if self._debug:
+                value = self._i2c_bus.read_byte_data(PowerCenter.AVR_I2C_ADDRESS, PowerCenter.AVR_BATT_CHRG_REG)
+                self._log_message('Charge rate was %03f amps' % (value/3))
+            self._i2c_bus.write_byte_data(PowerCenter.AVR_I2C_ADDRESS, PowerCenter.AVR_BATT_CHRG_REG, rate)
+            if self._debug:
+                self._log_message('Charge rate set to %03f amps' % (rate/3))
+        else:
+            raise ValueError
 
     def _power_monitor_sync(self):
         """
