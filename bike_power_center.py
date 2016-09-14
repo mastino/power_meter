@@ -28,6 +28,8 @@ class PowerCenter():
     ON_BATTERY  = 2
     LOW_BATTERY = 3
     LOW_BATTERY_VOLTS = 3.2
+    FULL_CHARGE_AMPS_POS = 0.003    # maximum batt amp draw on full charge with external power
+    FULL_CHARGE_AMPS_NEG = -0.1     # maximum batt charge amp considered at full charge
 
     LOG_FILE = "/var/log/power_center.log"
     RUNNING = 0
@@ -44,7 +46,7 @@ class PowerCenter():
     # avr constants
     AVR_I2C_BUS = 1
     AVR_I2C_ADDRESS = 0x21
-    AVR_BATT_CHRG_REG = 23
+    AVR_BATT_CHRG_REG = 23  # sets the battery charging rate (1/3, 2/3, 1 amp)
 
     def __init__(self):
         """
@@ -184,23 +186,22 @@ class PowerCenter():
         """
         Checks battery voltage and amperage updating LED indication if there is a change
         CHARGING := negative battery amperage
-        FULL_CHARGE := positive battery amperage with greater external amperage
+        FULL_CHARGE := positive battery amperage below FULL_CHARGE_AMPS
         ON_BATTERY := positive battery amperage
         LOW_BATTERY := battery voltage <= LOW_BATTERY_VOLTS
         """
         amperage = self.battery_power.amp
         voltage = self.battery_power.volt
-        ext_amperage = self.dyno_power.amp
 
         if voltage <= PowerCenter.LOW_BATTERY_VOLTS:
             if self.battery_status != PowerCenter.LOW_BATTERY:
                 self.battery_status = PowerCenter.LOW_BATTERY
                 self.battery_status_led.red()
-        elif amperage < 0:
+        elif amperage < PowerCenter.FULL_CHARGE_AMPS_NEG:
             if self.battery_status != PowerCenter.CHARGING:
                 self.battery_status = PowerCenter.CHARGING
                 self.battery_status_led.green(True)
-        elif ext_amperage > amperage:
+        elif amperage < PowerCenter.FULL_CHARGE_AMPS_POS:
             if self.battery_status != PowerCenter.FULL_CHARGE:
                 self.battery_status = PowerCenter.FULL_CHARGE
                 self.battery_status_led.green()
