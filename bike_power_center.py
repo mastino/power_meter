@@ -48,7 +48,12 @@ class PowerCenter():
     AVR_I2C_ADDRESS = 0x21
     AVR_BATT_CHRG_REG = 23  # sets the battery charging rate (1/3, 2/3, 1 amp)
 
-    def __init__(self):
+    # ina219 default addresses
+    INA219_I2C_BUS = 1
+    BATT_I2C_ADDRESS = 0x40
+    EXT_I2C_ADDRESS = 0x41
+
+    def __init__(self, i2c_bus=INA219_I2C_BUS, batt_addr=BATT_I2C_ADDRESS, ext_addr=EXT_I2C_ADDRESS):
         """
         Instantiates power center which for now just monitors battery and external power ina219 devices.
         """
@@ -275,7 +280,16 @@ def main():
     """
     Instantiates PowerCenter and waits for termination
     """
-    pc = PowerCenter()
+    if len(sys.argv) == 4:
+        i2c_bus = int(sys.argv[1])
+        batt_addr = int(sys.argv[2])
+        ext_addr = int(sys.argv[3])
+    else:
+        i2c_bus = PowerCenter.INA219_I2C_BUS
+        batt_addr = PowerCenter.BATT_I2C_ADDRESS
+        ext_addr = PowerCenter.EXT_I2C_ADDRESS
+
+    pc = PowerCenter(i2c_bus, batt_addr, ext_addr)
     pc.run()
 
 if __name__ == "__main__":

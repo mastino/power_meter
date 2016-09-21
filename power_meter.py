@@ -284,10 +284,9 @@ class INA219_Monitor (PowerMonitor):
         Sets calibration of ina219 and starts monitoring
         """
 
-        self._meter.begin()
         self._monitor = True
 
-        while self._monitor:
+        while self._meter and self._monitor:
 
             # use trigger or interval but not both
             if self.trigger:

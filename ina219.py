@@ -163,6 +163,12 @@ INA219_CALIB_32V_2A    = 0
 INA219_CALIB_32V_1A    = 1
 INA219_CALIB_16V_400mA = 2
 
+# status constants
+INA219_STATUS_INIT = 0
+INA219_STATUS_FAILED = 1  #calibration failed
+INA219_STATUS_OK = 2      #successful calibration
+INA219_STATUS_ERROR = 3   #IO error in last read/write
+
 class INA219:
 
   def __init__(self, addr = INA219_ADDRESS, n = INA219_I2C_DEVICE_NUM):
@@ -187,6 +193,15 @@ class INA219:
       # default values for calibration and sampling
       self._calibrator = INA219_CALIB_32V_2A
       self._sampling = 1
+      self._status = INA219_STATUS_INIT
+
+
+  def __bool__(self):
+      """
+      Calibration state of device. Returns true if ina219 was successfully calibrated otherwise false.
+      :return: True/False
+      """
+      return not ((self._status == INA219_STATUS_INIT) or (self._status == INA219_STATUS_FAILED))
 
   def __str__(self):
       """
@@ -393,7 +408,11 @@ class INA219:
       Gets the raw bus voltage (16-bit signed integer, so +/- 32767
       :return:
       """
-      value = self._wireReadRegister(INA219_REG_BUSVOLTAGE)
+      value = 0
+      try:
+        value = self._wireReadRegister(INA219_REG_BUSVOLTAGE)
+      except IOError:
+          self._status = INA219_STATUS_ERROR
 
       # Shift to the reight 3 to drop CNVR and OVF and multiply by LSB
       return (value >> 3) * 4
@@ -403,7 +422,11 @@ class INA219:
       Gets the raw shunt voltage (16-bit signed integer, so +/- 32767
       :return:
       """
-      return self._wireReadRegister(INA219_REG_SHUNTVOLTAGE)
+      value = 0
+      try:
+          value = self._wireReadRegister(INA219_REG_SHUNTVOLTAGE)
+      except IOError:
+          self._status = INA219_STATUS_ERROR
 
   def _getCurrent_raw(self):
       """
@@ -420,7 +443,12 @@ class INA219:
       #self._wireWriteRegister(INA219_REG_CALIBRATION, self.ina219_calValue)
 
       # Now we can safely read the CURRENT register!
-      return self._wireReadRegister(INA219_REG_CURRENT)
+      value = 0
+      try:
+          value = self._wireReadRegister(INA219_REG_CURRENT)
+      except IOError:
+          self._status = INA219_STATUS_ERROR
+      return value
 
   def _getPower_raw(self):
       """
@@ -435,7 +463,12 @@ class INA219:
       to exactly match getPower
       :return: float
       """
-      return self._wireReadRegister(INA219_REG_POWER)
+      value = 0
+      try:
+          value = self._wireReadRegister(INA219_REG_POWER)
+      except IOError:
+          self._status = INA219_STATUS_ERROR
+      return value
 
   def _reset(self):
       """
@@ -443,7 +476,10 @@ class INA219:
       clear calibration/configuration of the ina219. Run begin() to restore
       configuration before continuing use.
       """
-      self._wireWriteRegister(INA219_REG_CONFIG, INA219_CONFIG_RESET)
+      try:
+          self._wireWriteRegister(INA219_REG_CONFIG, INA219_CONFIG_RESET)
+      except IOError:
+          self._status = INA219_STATUS_ERROR
 
 
   # The following multipliers are used to convert raw current and power
@@ -542,8 +578,11 @@ class INA219:
       """
       Writes configuration and calibration values to ina219 registers
       """
-      if self.ina219_calValue != 0 and self.ina219_config != 0:
-          self._wireWriteRegister(INA219_REG_CONFIG, self.ina219_config)
-          self._wireWriteRegister(INA219_REG_CALIBRATION, self.ina219_calValue)
+      try:
+          if self.ina219_calValue != 0 and self.ina219_config != 0:
+              self._wireWriteRegister(INA219_REG_CONFIG, self.ina219_config)
+              self._wireWriteRegister(INA219_REG_CALIBRATION, self.ina219_calValue)
+      except IOError:
+          self._status = INA219_STATUS_FAILED
 
 
