@@ -338,21 +338,30 @@ class PowerMeter:
         """
         :return: float
         """
-        return self._last.volt
+        volt = 0.0
+        if self._last:
+            volt = self._last.volt
+        return volt
 
     @property
     def amp(self):
         """
         :return: float
         """
-        return self._last.amp
+        amp = 0.0
+        if self._last:
+            amp = self._last.amp
+        return amp
 
     @property
     def watt(self):
         """
         :return: float
         """
-        return self._last.watt
+        watt = 0.0
+        if self._last:
+            watt = self._last.watt
+        return watt
 
     @property
     def watt_seconds(self):
