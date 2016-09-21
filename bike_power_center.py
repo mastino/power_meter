@@ -199,8 +199,6 @@ class PowerCenter():
         voltage = self.battery_power.volt
         power = self.battery_power.power
 
-        if (amperage == 0.0) and (voltage == 0.0) and (power == 0.0):
-            # missing battery
         if voltage <= PowerCenter.LOW_BATTERY_VOLTS:
             if self.battery_status != PowerCenter.LOW_BATTERY:
                 self.battery_status = PowerCenter.LOW_BATTERY
