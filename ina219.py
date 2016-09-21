@@ -582,6 +582,7 @@ class INA219:
           if self.ina219_calValue != 0 and self.ina219_config != 0:
               self._wireWriteRegister(INA219_REG_CONFIG, self.ina219_config)
               self._wireWriteRegister(INA219_REG_CALIBRATION, self.ina219_calValue)
+              self._status = INA219_STATUS_OK
       except IOError:
           self._status = INA219_STATUS_FAILED
 
