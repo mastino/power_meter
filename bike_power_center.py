@@ -23,6 +23,7 @@ class PowerCenter():
     power consumption.
     """
 
+    # battery states
     CHARGING    = 0
     FULL_CHARGE = 1
     ON_BATTERY  = 2
@@ -32,6 +33,11 @@ class PowerCenter():
     FULL_CHARGE_AMPS_NEG = 0.000    # maximum batt charge amp considered at full charge
 
     LOG_FILE = "/var/log/power_center.log"
+    DATA_FILE_PATH = "/var/log"
+    DATA_FILE_PREFIX = "power_center"
+    DATA_FILE_SUFFIX = ".csv"
+
+    # power center states
     RUNNING = 0
     SHUTDOWN = 1
     TERMINATE = 2
@@ -63,8 +69,8 @@ class PowerCenter():
                                            self._trigger)
         self.dyno_power = pm.PowerMeter(pm.INA219_Monitor(0.1, 0x41, 1, ina219.INA219_CALIB_32V_2A, 128),
                                         self._trigger)
-        self.log_file = PowerCenter.LOG_FILE
         self.log_fh = None
+        self.data_fh = None
         self.battery_status = None
         self.battery_status_led = rgb.RGB_led(21, 20, 16)
         self._battery_timer = Timer(PowerCenter.CHECK_BATTERY_INTERVAL, self._check_battery)
@@ -77,6 +83,8 @@ class PowerCenter():
         signal.signal(signal.SIGINT, self._sig_handler)
         signal.signal(signal.SIGUSR1, self._sig_handler)
 
+
+
     def run(self):
         """
         Starts things up and launches timers
@@ -86,9 +94,13 @@ class PowerCenter():
         self.dyno_power.open()
         self._power_monitor_timer.start()
         self._battery_timer.start()
-        if self.log_fh:
-            self._log_timer = Timer(PowerCenter.LOG_DATA_INTERVAL, self._output_log)
-            self._log_timer.start()
+
+        try:
+            self.log_fh = open(PowerCenter.LOG_FILE, 'a')
+            self._log_message("Power Center starting")
+        except:
+            print('Failed to open %s for logging: %s' % (PowerCenter.LOG_FILE, sys.exc_info()[0]), sys.stderr)
+            self.log_fh = None
 
         while self._state != PowerCenter.TERMINATE:
             result = signal.pause()
@@ -236,13 +248,13 @@ class PowerCenter():
         """
         writes the battery and dyno power values to the log file
         """
-        if self.log_fh:
+        if self.data_fh:
             battery_data = self.battery_power.get()
             battery_watt_seconds = self.battery_power.watt_seconds
             dyno_data = self.dyno_power.get()
             dyno_watt_seconds = self.dyno_power.watt_seconds
-            message = ',%s,%f,%s,%f' % (battery_data.csv(), battery_watt_seconds, dyno_data.csv(), dyno_watt_seconds)
-            self._log_message(message)
+            message = '"%s",%s,%f,%s,%f' % (datetime.now(), battery_data.csv(), battery_watt_seconds, dyno_data.csv(), dyno_watt_seconds)
+            print(message, file=self.data_fh)
 
     def _log_message(self, message):
         """
@@ -267,21 +279,24 @@ class PowerCenter():
             self.close()
 
         elif signum == signal.SIGUSR1:
-            if self.log_fh:
-                self._log_message('Logging disabled')
-                self.log_fh.flush()
-                self.log_fh.close()
-                self.log_fh = None
+            if self.data_fh:
+                self._log_message('Data logging disabled')
+                self.data_fh.flush()
+                self.data_fh.close()
+                self.data_fh = None
             else:
+                mark = datetime.now()
+                time_string = mark.strftime('%y%m%d_%H%M%S')
+                data_file = PowerCenter.DATA_FILE_PATH + '/' + PowerCenter.DATA_FILE_PREFIX + time_string + PowerCenter.DATA_FILE_SUFFIX
                 try:
-                    self.log_fh = open(self.log_file, 'a')
+                    self.data_fh = open(data_file, 'a')
                 except:
-                    print('Failed to open %s for logging: %s' % (self.log_file, sys.exc_info()[0]), sys.stderr)
-                    self.log_fh = None
+                    print('Failed to open %s for logging: %s' % (data_file, sys.exc_info()[0]), sys.stderr)
+                    self.data_fh = None
                     return
                 self._log_timer = Timer(PowerCenter.LOG_DATA_INTERVAL, self._output_log)
                 self._log_timer.start()
-                self._log_message('Logging enabled')
+                self._log_message('Data logging enabled')
 
 
 def main():
