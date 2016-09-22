@@ -435,11 +435,14 @@ class PowerMeter:
                 self._avg_period = period.total_seconds()
 
             # update data structures
-            self._last = copy.deepcopy(power_data)
-            self._watt_seconds += self._last.watt * self._last._period.total_seconds()
+            self._last = power_data
+            watt = self._last.watt
+            if self._last.amp < 0:
+                watt = -watt
+            self._watt_seconds += watt * self._last._period.total_seconds()
 
             if self._queue.full():
                 self._queue.get(False)
-            self._queue.put(power_data)
+            self._queue.put(copy.deepcopy(power_data))
 
 
