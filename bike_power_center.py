@@ -99,10 +99,10 @@ class PowerCenter():
 
         try:
             fh = open(PowerCenter.PID_FILE, 'w')
-            print('%d' % os.getpid(), fh)
+            print('%d' % os.getpid(), file=fh)
             fh.close()
         except:
-            print('Failed to open %s for pid file: %s' % (PowerCenter.PID_FILE, sys.exc_info()[0]), sys.stderr)
+            print('Failed to open %s for pid file: %s' % (PowerCenter.PID_FILE, sys.exc_info()[0]), file=sys.stderr)
 
     def run(self):
         """
@@ -118,7 +118,7 @@ class PowerCenter():
             self.log_fh = open(PowerCenter.LOG_FILE, 'a')
             self._log_message("Power Center starting")
         except:
-            print('Failed to open %s for logging: %s' % (PowerCenter.LOG_FILE, sys.exc_info()[0]), sys.stderr)
+            print('Failed to open %s for logging: %s' % (PowerCenter.LOG_FILE, sys.exc_info()[0]), file=sys.stderr)
             self.log_fh = None
 
         while self._state != PowerCenter.TERMINATE:
@@ -311,7 +311,7 @@ class PowerCenter():
                 try:
                     self.data_fh = open(data_file, 'a')
                 except:
-                    print('Failed to open %s for logging: %s' % (data_file, sys.exc_info()[0]), sys.stderr)
+                    print('Failed to open %s for logging: %s' % (data_file, sys.exc_info()[0]), file=sys.stderr)
                     self.data_fh = None
                     return
                 self._log_timer = Timer(PowerCenter.LOG_DATA_INTERVAL, self._output_log)
@@ -325,7 +325,7 @@ class PowerCenter():
                 self.log_fh = open(PowerCenter.LOG_FILE, 'a')
                 self._log_message("Log file restart")
             except:
-                print('Failed to open %s for logging: %s' % (PowerCenter.LOG_FILE, sys.exc_info()[0]), sys.stderr)
+                print('Failed to open %s for logging: %s' % (PowerCenter.LOG_FILE, sys.exc_info()[0]), file=sys.stderr)
                 self.log_fh = None
 
 
