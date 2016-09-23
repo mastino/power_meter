@@ -212,12 +212,12 @@ class PowerCenter():
 
         if voltage <= PowerCenter.LOW_BATTERY_VOLTS:
             if self.battery_status != PowerCenter.LOW_BATTERY:
-                self._log_message("low battery after %f wattseconds" % self.battery_power.watt_seconds)
+                self._log_message("Low battery after %f wattseconds" % self.battery_power.watt_seconds)
                 self.battery_status = PowerCenter.LOW_BATTERY
                 self.battery_status_led.red()
         elif amperage < PowerCenter.FULL_CHARGE_AMPS_NEG:
             if self.battery_status != PowerCenter.CHARGING:
-                self._log_message("battery is charging")
+                self._log_message("Battery is charging")
                 self.battery_status = PowerCenter.CHARGING
                 self.battery_status_led.green(True)
         elif amperage < PowerCenter.FULL_CHARGE_AMPS_POS:
@@ -225,13 +225,13 @@ class PowerCenter():
                 # when transitioning from charging to full charge zero wattseconds
                 # so we can improve tracking battery capacity
                 if self.battery_status == PowerCenter.CHARGING:
-                    self._log_message("battery has reached full charge")
+                    self._log_message("Battery has reached full charge")
                     self.battery_power._watt_seconds = 0.0
                 self.battery_status = PowerCenter.FULL_CHARGE
                 self.battery_status_led.green()
         else:
             if self.battery_status != PowerCenter.ON_BATTERY:
-                self._log_message("on battery")
+                self._log_message("On battery")
                 self.battery_status = PowerCenter.ON_BATTERY
                 self.battery_status_led.blue()
 
