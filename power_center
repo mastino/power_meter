@@ -8,5 +8,7 @@
     weekly
     maxsize 1M
     missingok
-    notifempty
+    notifemptym
+    postrotate
+        kill -SIGHUP `cat /var/run/power_center.pid`
 }
