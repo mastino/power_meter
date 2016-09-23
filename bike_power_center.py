@@ -99,7 +99,7 @@ class PowerCenter():
 
         try:
             fh = open(PowerCenter.PID_FILE, 'w')
-            print('%d' % os.getpid())
+            print('%d' % os.getpid(), fh)
             fh.close()
         except:
             print('Failed to open %s for pid file: %s' % (PowerCenter.PID_FILE, sys.exc_info()[0]), sys.stderr)
