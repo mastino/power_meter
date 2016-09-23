@@ -7,6 +7,7 @@ Provides services for monitoring and managing bicycle electrical systems
 
 from __future__ import print_function
 import sys
+import os
 sys.path.append('/home/pi/lib/python')
 
 import signal
@@ -36,6 +37,7 @@ class PowerCenter():
     DATA_FILE_PATH = "/var/log"
     DATA_FILE_PREFIX = "power_center"
     DATA_FILE_SUFFIX = ".csv"
+    PID_FILE = "/var/run/power_center.pid"
 
     # power center states
     RUNNING = 0
@@ -54,10 +56,17 @@ class PowerCenter():
     AVR_I2C_ADDRESS = 0x21
     AVR_BATT_CHRG_REG = 23  # sets the battery charging rate (1/3, 2/3, 1 amp)
 
-    # ina219 default addresses
+    # ina219 defaults
     INA219_I2C_BUS = 1
     BATT_I2C_ADDRESS = 0x40
     EXT_I2C_ADDRESS = 0x41
+    INA219_POLL_SECS = 0.1
+    INA219_SAMPLES = 128
+
+    # LED BCM pin numbers
+    RED_PIN = 21
+    GREEN_PIN = 20
+    BLUE_PIN = 16
 
     def __init__(self, i2c_bus=INA219_I2C_BUS, batt_addr=BATT_I2C_ADDRESS, ext_addr=EXT_I2C_ADDRESS):
         """
@@ -65,14 +74,18 @@ class PowerCenter():
         """
         self._trigger = Event()
         self._state = None
-        self.battery_power = pm.PowerMeter(pm.INA219_Monitor(0.1, 0x40, 1, ina219.INA219_CALIB_32V_1A, 128),
+        self.battery_power = pm.PowerMeter(pm.INA219_Monitor(PowerCenter.INA219_POLL_SECS, PowerCenter.BATT_I2C_ADDRESS,
+                                                             PowerCenter.INA219_I2C_BUS, ina219.INA219_CALIB_32V_1A,
+                                                             PowerCenter.INA219_SAMPLES),
                                            self._trigger)
-        self.dyno_power = pm.PowerMeter(pm.INA219_Monitor(0.1, 0x41, 1, ina219.INA219_CALIB_32V_2A, 128),
+        self.dyno_power = pm.PowerMeter(pm.INA219_Monitor(PowerCenter.INA219_POLL_SECS, PowerCenter.EXT_I2C_ADDRESS,
+                                                          PowerCenter.INA219_I2C_BUS, ina219.INA219_CALIB_32V_2A,
+                                                          PowerCenter.INA219_SAMPLES),
                                         self._trigger)
         self.log_fh = None
         self.data_fh = None
         self.battery_status = None
-        self.battery_status_led = rgb.RGB_led(21, 20, 16)
+        self.battery_status_led = rgb.RGB_led(PowerCenter.RED_PIN, PowerCenter.GREEN_PIN, PowerCenter.BLUE_PIN)
         self._battery_timer = Timer(PowerCenter.CHECK_BATTERY_INTERVAL, self._check_battery)
         self._log_timer = None
         self._power_monitor_timer = Timer(PowerCenter.POWER_MONITOR_INTERVAL, self._power_monitor_sync)
@@ -82,8 +95,14 @@ class PowerCenter():
         signal.signal(signal.SIGTERM, self._sig_handler)
         signal.signal(signal.SIGINT, self._sig_handler)
         signal.signal(signal.SIGUSR1, self._sig_handler)
+        signal.signal(signal.SIGHUP), self._sig_handler)
 
-
+        try:
+            fh = open(PowerCenter.PID_FILE, 'w')
+            print('%d' % os.getpid())
+            fh.close()
+        except:
+            print('Failed to open %s for pid file: %s' % (PowerCenter.PID_FILE, sys.exc_info()[0]), sys.stderr)
 
     def run(self):
         """
@@ -270,7 +289,7 @@ class PowerCenter():
     def _sig_handler(self, signum, frame):
         """
         Handles system signals. SIGINT, SIGTERM to gracefully terminate operation. SIGUSR1 will toggle
-        data logging.
+        data logging. SIGHUP restarts log file (send after rotating logs)
         :param signum:
         :param frame:
         """
@@ -298,6 +317,17 @@ class PowerCenter():
                 self._log_timer = Timer(PowerCenter.LOG_DATA_INTERVAL, self._output_log)
                 self._log_timer.start()
                 self._log_message('Data logging enabled')
+
+        elif signum == signal.SIGHUP:
+            if self.log_fh:
+                self.log_fh.close()
+            try:
+                self.log_fh = open(PowerCenter.LOG_FILE, 'a')
+                self._log_message("Log file restart")
+            except:
+                print('Failed to open %s for logging: %s' % (PowerCenter.LOG_FILE, sys.exc_info()[0]), sys.stderr)
+                self.log_fh = None
+
 
 
 def main():
