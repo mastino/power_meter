@@ -95,7 +95,7 @@ class PowerCenter():
         signal.signal(signal.SIGTERM, self._sig_handler)
         signal.signal(signal.SIGINT, self._sig_handler)
         signal.signal(signal.SIGUSR1, self._sig_handler)
-        signal.signal(signal.SIGHUP), self._sig_handler)
+        signal.signal(signal.SIGHUP, self._sig_handler)
 
         try:
             fh = open(PowerCenter.PID_FILE, 'w')
