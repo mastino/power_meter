@@ -103,7 +103,7 @@ class PowerCenter():
             self.log_fh = None
 
         while self._state != PowerCenter.TERMINATE:
-            result = signal.pause()
+            signal.pause()
             if self._debug:
                 self._log_message('Caught Interrupt')
 
@@ -263,6 +263,7 @@ class PowerCenter():
         """
         if self.log_fh:
             print('%s %s' % (datetime.now(), message), file=self.log_fh)
+            self.log_fh.flush()
         if self._debug:
             print('%s %s' % (datetime.now(), message), file=sys.stderr)
 
