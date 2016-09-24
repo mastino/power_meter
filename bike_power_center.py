@@ -53,11 +53,6 @@ class PowerCenter():
 
     DEBUG = False
 
-    # avr constants
-    AVR_I2C_BUS = 1
-    AVR_I2C_ADDRESS = 0x21
-    AVR_BATT_CHRG_REG = 23  # sets the battery charging rate (1/3, 2/3, 1 amp)
-
     # ina219 defaults
     INA219_I2C_BUS = 1
     BATT_I2C_ADDRESS = 0x40
