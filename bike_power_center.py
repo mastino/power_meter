@@ -30,6 +30,8 @@ class PowerCenter():
     ON_BATTERY  = 2
     LOW_BATTERY = 3
     LOW_BATTERY_VOLTS = 3.2
+    LOW_BATTERY_HYSTERESIS = 0.02   # once low battery state is reached voltage must rise this additional
+                                    # value to obtain on_battery state
     FULL_CHARGE_AMPS_POS = 0.003    # maximum batt amp draw on full charge with external power
     FULL_CHARGE_AMPS_NEG = 0.000    # maximum batt charge amp considered at full charge
 
@@ -249,7 +251,9 @@ class PowerCenter():
                 self.battery_status = PowerCenter.FULL_CHARGE
                 self.battery_status_led.green()
         else:
-            if self.battery_status != PowerCenter.ON_BATTERY:
+            if ((self.battery_status != PowerCenter.ON_BATTERY) and
+               not ((self.battery_status == PowerCenter.LOW_BATTERY) and
+                    (voltage < PowerCenter.LOW_BATTERY_VOLTS + PowerCenter.LOW_BATTERY_HYSTERESIS))):
                 self._log_message("On battery")
                 self.battery_status = PowerCenter.ON_BATTERY
                 self.battery_status_led.blue()
