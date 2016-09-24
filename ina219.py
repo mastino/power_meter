@@ -427,6 +427,7 @@ class INA219:
           value = self._wireReadRegister(INA219_REG_SHUNTVOLTAGE)
       except IOError:
           self._status = INA219_STATUS_ERROR
+      return value
 
   def _getCurrent_raw(self):
       """
@@ -513,7 +514,7 @@ class INA219:
                         INA219_CONFIG_MODE_SANDBVOLT_TRIGGERED
                         INA219_CONFIG_MODE_SANDBVOLT_CONTINUOUS
 
-      The following configuration was taken from the Texa Instruments INA219 application
+      The following configuration was taken from the Texas Instruments INA219 application
       document (SB0S448G-August 2008-Revised December 2015) along with insight from K. Townsend's calibration
       methods.
       """
@@ -535,7 +536,7 @@ class INA219:
       # argument.
       #
       # The current register and power register hold values as determined by the following formulas:
-      #     Current Register = (Shunt Voltage REgister x Calibration Register) / 4096
+      #     Current Register = (Shunt Voltage Register x Calibration Register) / 4096
       #     Power Register = (Current Register x Bus Voltage Register) / 5000
       #
       # TODO: the cal constant can be extended to externaly calibrate the ina219
