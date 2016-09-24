@@ -411,6 +411,7 @@ class INA219:
       value = 0
       try:
         value = self._wireReadRegister(INA219_REG_BUSVOLTAGE)
+        self._status = INA219_STATUS_OK
       except IOError:
           self._status = INA219_STATUS_ERROR
 
@@ -425,6 +426,7 @@ class INA219:
       value = 0
       try:
           value = self._wireReadRegister(INA219_REG_SHUNTVOLTAGE)
+          self._status = INA219_STATUS_OK
       except IOError:
           self._status = INA219_STATUS_ERROR
       return value
@@ -447,6 +449,7 @@ class INA219:
       value = 0
       try:
           value = self._wireReadRegister(INA219_REG_CURRENT)
+          self._status = INA219_STATUS_OK
       except IOError:
           self._status = INA219_STATUS_ERROR
       return value
@@ -467,6 +470,7 @@ class INA219:
       value = 0
       try:
           value = self._wireReadRegister(INA219_REG_POWER)
+          self._status = INA219_STATUS_OK
       except IOError:
           self._status = INA219_STATUS_ERROR
       return value
@@ -479,6 +483,7 @@ class INA219:
       """
       try:
           self._wireWriteRegister(INA219_REG_CONFIG, INA219_CONFIG_RESET)
+          self._status = INA219_STATUS_INIT
       except IOError:
           self._status = INA219_STATUS_ERROR
 

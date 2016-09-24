@@ -1,5 +1,5 @@
 # Rickie Kerndt <rkerndt@cs.uoregon.edu>
-# logrotate configuration file for bike loop detection service
+# logrotate configuration file for bike power center service
 # This file belongs under directory /etc/logrotate.d
 
 /var/log/power_center.log {
@@ -8,7 +8,7 @@
     weekly
     maxsize 1M
     missingok
-    notifemptym
+    notifempty
     postrotate
         kill -SIGHUP `cat /var/run/power_center.pid`
 }
