@@ -330,7 +330,7 @@ class PowerMeter:
         self._avg_period = None        # period (time span in datetime.timedelta) of power values
         self._maxsize = 10             # maximum size for PowerData queue
         self._queue = Queue.Queue(maxsize=self._maxsize)
-
+        self._queue_enabled = False
         self._watt_seconds = 0.0
 
     @property
@@ -385,6 +385,8 @@ class PowerMeter:
         :param block True/False blocks if PowerData queue is empty
         :return: PowerData object
         """
+        if not self._queue_enabled:
+            self._queue_enabled = True
         return self._queue.get(block)
 
 
@@ -441,8 +443,9 @@ class PowerMeter:
                 watt = -watt
             self._watt_seconds += watt * self._last._period.total_seconds()
 
-            if self._queue.full():
-                self._queue.get(False)
-            self._queue.put(copy.deepcopy(power_data))
+            if self._queue_enabled:
+                if self._queue.full():
+                    self._queue.get(False)
+                self._queue.put(copy.deepcopy(power_data))
 
 
