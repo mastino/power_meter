@@ -3,6 +3,10 @@ Rickie Kerndt <rkerndt@cs.uoregon.edu>
 Module for controlling Andice Labs PowerCape avr
 """
 
+from __future__ import print_function
+import smbus
+import sys
+
 class AVR:
     """
     Monitor and controll operation of Andice Labs PowerCape avr
@@ -18,7 +22,7 @@ class AVR:
 
     # AVR registers
     REG_MCUSR = 0             # AVR register
-    REG_OSCCAL = 1            #AVR register
+    REG_OSCCAL = 1            # AVR register
     REG_STATUS = 2
     REG_CONTROL = 3
     REG_START_ENABLE = 4
@@ -72,4 +76,59 @@ class AVR:
     BOARD_TYPE_BONE = 0x00
     BOARD_TYPE_PI = 0x01
     BOARD_TYPE_UNKNOWN = 0xFF
+
+    # Charge rates
+    CHARGE_RATE_ZERO = 0      # disables battery charging
+    CHARGE_RATE_LOW = 1       # 1/3 amp max
+    CHARGE_RATE_MED = 2       # 2/3 amp max
+    CHARGE_RATE_HIGH = 3      # 1 amp max
+    CHARGE_RATE_OK = (CHARGE_RATE_LOW, CHARGE_RATE_MED, CHARGE_RATE_HIGH)
+
+    def __init__(self, address=I2C_ADDRESS, bus_num=I2C_BUS):
+        """
+
+        :param address:
+        :param bus:
+        """
+        self._status = AVR.STATUS_INIT
+        self._i2c_address = address
+        self._i2c_bus_num = bus_num
+        self._i2c_bus = smbus.SMBus(self._i2c_bus_num)
+
+    def __repr__(self):
+        """
+        String representation of self
+        """
+
+        return("AVR(0x%x, %d" % self._i2c_address, self._i2c_bus)
+
+
+    def get_charge_rate(self):
+        """
+        Returns the current charge rate setting from the avr
+        :return: int
+        """
+        try:
+            value = self._i2c_bus.read_byte_data(self._i2c_address, AVR.REG_I2C_ICHARGE)
+            self._status = AVR.STATUS_OK
+        except IOError:
+            print("AVR i2c read failed for charge rate", file=sys.stderr)
+            self._status = AVR.STATUS_ERROR
+        return value
+
+    def set_charge_rate(self, rate):
+        """
+        Sets the battery charge rate on the AVR
+        :param rate: int in CHARGE_RATE_OK
+        :return:
+        """
+        if rate in AVR.CHARGE_RATE_OK:
+            try:
+                self._i2c_bus.write_byte_data(self._i2c_address, AVR.REG_I2C_ICHARGE, rate)
+                self._status = AVR.STATUS_OK
+            except IOError:
+                print("AVR i2c write failed for charge rate", file=sys.stderr)
+                self._status = AVR.STATUS_ERROR
+
+
 
