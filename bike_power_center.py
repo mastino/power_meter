@@ -34,6 +34,7 @@ class PowerCenter():
                                     # value to obtain on_battery state
     FULL_CHARGE_AMPS_POS = 0.003    # maximum batt amp draw on full charge with external power
     FULL_CHARGE_AMPS_NEG = 0.000    # maximum batt charge amp considered at full charge
+    FULL_CHARGE_HYSTERESIS = 0.01
 
     LOG_FILE = "/var/log/power_center.log"
     DATA_FILE_PATH = "/var/log"
@@ -87,7 +88,6 @@ class PowerCenter():
         self._log_timer = None
         self._power_monitor_timer = Timer(PowerCenter.POWER_MONITOR_INTERVAL, self._power_monitor_sync)
         self._debug = PowerCenter.DEBUG
-        self._i2c_bus = smbus.SMBus(PowerCenter.AVR_I2C_BUS)
 
         signal.signal(signal.SIGTERM, self._sig_handler)
         signal.signal(signal.SIGINT, self._sig_handler)
@@ -178,25 +178,6 @@ class PowerCenter():
             self._log_message('Setting state to TERMINATE')
         self._state = PowerCenter.TERMINATE
 
-    def set_charge_rate(self, rate):
-        """
-        Sets the charge rate on the AndiceLabs PowerPi
-        :param rate: one of {0,1,2,3}
-                     0 := charging disabled
-                     1 := 1/3 amp
-                     2 := 2/3 amp
-                     3 := 1 amp
-        """
-        if rate in [0, 1, 2, 3]:
-            if self._debug:
-                value = self._i2c_bus.read_byte_data(PowerCenter.AVR_I2C_ADDRESS, PowerCenter.AVR_BATT_CHRG_REG)
-                self._log_message('Charge rate was %03f amps' % (value/3))
-            self._i2c_bus.write_byte_data(PowerCenter.AVR_I2C_ADDRESS, PowerCenter.AVR_BATT_CHRG_REG, rate)
-            if self._debug:
-                self._log_message('Charge rate set to %03f amps' % (rate/3))
-        else:
-            raise ValueError
-
     def _power_monitor_sync(self):
         """
         Sets event controlling synchronization of power monitors
@@ -232,7 +213,9 @@ class PowerCenter():
                 self.battery_status = PowerCenter.LOW_BATTERY
                 self.battery_status_led.red()
         elif amperage < PowerCenter.FULL_CHARGE_AMPS_NEG:
-            if self.battery_status != PowerCenter.CHARGING:
+            if ((self.battery_status != PowerCenter.CHARGING) and
+                not ((self.battery_status == PowerCenter.FULL_CHARGE_AMPS_NEG) and
+                    (amperage < PowerCenter.FULL_CHARGE_AMPS_NEG + PowerCenter.FULL_CHARGE_HYSTERESIS))):
                 self._log_message("Battery is charging")
                 self.battery_status = PowerCenter.CHARGING
                 self.battery_status_led.green(True)
