@@ -99,7 +99,7 @@ class AVR:
         """
         String representation of self
         """
-        return("AVR(0x%x, %d" % self._i2c_address, self._i2c_bus)
+        return("AVR(0x%x, %d" % (self._i2c_address, self._i2c_bus))
 
     def close(self):
         """
@@ -112,12 +112,14 @@ class AVR:
         Returns the current charge rate setting from the avr
         :return: int
         """
+        value = None
         try:
             value = self._i2c_bus.read_byte_data(self._i2c_address, AVR.REG_I2C_ICHARGE)
             self._status = AVR.STATUS_OK
         except IOError:
             print("AVR i2c read failed for charge rate", file=sys.stderr)
             self._status = AVR.STATUS_ERROR
+
         return value
 
     def set_charge_rate(self, rate):
