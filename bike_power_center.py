@@ -262,11 +262,17 @@ class PowerCenter():
         writes message to log file inserting a timestamp
         :param message: string
         """
+        battery_data = self.battery_power.get()
+        battery_watt_seconds = self.battery_power.watt_seconds
+        dyno_data = self.dyno_power.get()
+        dyno_watt_seconds = self.dyno_power.watt_seconds
+        power_data = '%s,%f,%s,%f' % (battery_data.csv(), battery_watt_seconds, dyno_data.csv(), dyno_watt_seconds)
+
         if self.log_fh:
-            print('%s %s' % (datetime.now(), message), file=self.log_fh)
+            print('"%s", %s, %s' % (datetime.now(), message, power_data), file=self.log_fh)
             self.log_fh.flush()
         if self._debug:
-            print('%s %s' % (datetime.now(), message), file=sys.stderr)
+            print('"%s", %s, %s' % (datetime.now(), message, power_data), file=sys.stderr)
 
     def _sig_handler(self, signum, frame):
         """

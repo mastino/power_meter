@@ -99,7 +99,7 @@ class AVR:
         """
         String representation of self
         """
-        return("AVR(0x%x, %d" % (self._i2c_address, self._i2c_bus))
+        return("AVR(0x%x, %d" % (self._i2c_address, self._i2c_bus_num))
 
     def close(self):
         """
