@@ -245,16 +245,34 @@ class PowerCenter():
             self._log_timer = Timer(PowerCenter.LOG_DATA_INTERVAL, self._output_log)
             self._log_timer.start()
 
+    def _format_power_data(self):
+        """
+        Provides a string format of power values for battery and dyno with values separated by commas.
+        If power data isn't yet available, then returns commas representing missing data.
+        :return: string
+        """
+
+        battery_data = self.battery_power.get()
+        if battery_data:
+            battery_csv = battery_data.csv()
+        else:
+            battery_csv = ",,,,"
+        battery_watt_seconds = self.battery_power.watt_seconds
+        dyno_data = self.dyno_power.get()
+        if dyno_data:
+            dyno_csv = dyno_data.csv()
+        else:
+            dyno_csv = ",,,,"
+        dyno_watt_seconds = self.dyno_power.watt_seconds
+
+        return '%s,%f,%s,%f' % (battery_csv, battery_watt_seconds, dyno_csv, dyno_watt_seconds)
+
     def _log_power_data(self):
         """
         writes the battery and dyno power values to the log file
         """
         if self.data_fh:
-            battery_data = self.battery_power.get()
-            battery_watt_seconds = self.battery_power.watt_seconds
-            dyno_data = self.dyno_power.get()
-            dyno_watt_seconds = self.dyno_power.watt_seconds
-            message = '"%s",%s,%f,%s,%f' % (datetime.now(), battery_data.csv(), battery_watt_seconds, dyno_data.csv(), dyno_watt_seconds)
+            message = '"%s",%s' % (datetime.now(), self._format_power_data())
             print(message, file=self.data_fh)
 
     def _log_message(self, message):
@@ -262,11 +280,7 @@ class PowerCenter():
         writes message to log file inserting a timestamp
         :param message: string
         """
-        battery_data = self.battery_power.get()
-        battery_watt_seconds = self.battery_power.watt_seconds
-        dyno_data = self.dyno_power.get()
-        dyno_watt_seconds = self.dyno_power.watt_seconds
-        power_data = '%s,%f,%s,%f' % (battery_data.csv(), battery_watt_seconds, dyno_data.csv(), dyno_watt_seconds)
+        power_data = self._format_power_data()
 
         if self.log_fh:
             print('"%s", %s, %s' % (datetime.now(), message, power_data), file=self.log_fh)
